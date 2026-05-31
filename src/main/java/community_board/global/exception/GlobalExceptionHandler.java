@@ -19,6 +19,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String field = e.getBindingResult().getFieldError().getField();
+        String validationCode = e.getBindingResult().getFieldError().getCode();
+
+        if ("NotBlank".equals(validationCode)) {
+            return ResponseEntity.status(ErrorCode.REQUIRED_MISSING.getHttpStatus()).body(ApiResponse.of(ErrorCode.REQUIRED_MISSING.getCode()));
+        }
 
         if ("email".equals(field)) {
             return ResponseEntity.status(ErrorCode.EMAIL_POLICY_VIOLATION.getHttpStatus()).body(ApiResponse.of(ErrorCode.EMAIL_POLICY_VIOLATION.getCode()));
