@@ -26,7 +26,7 @@ public class UserService {
         }
         //DTO -> domain
         User user = new User(
-                null, userSignupRequest.getEmail(), userSignupRequest.getPassword(), userSignupRequest.getNickname(), userSignupRequest.getProfileImage()
+                userSignupRequest.getEmail(), userSignupRequest.getPassword(), userSignupRequest.getNickname(), userSignupRequest.getProfileImage()
         );
 
         //DB에 user 저장
