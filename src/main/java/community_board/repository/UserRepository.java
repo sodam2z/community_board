@@ -25,10 +25,4 @@ public interface UserRepository extends JpaRepository<User,Integer> {
     //닉네임 중복 확인
     boolean existsByNickname(String nickname);
 
-    //회원 정보 수정
-    //void updateProfile(Integer userId, String nickname, String profileImage);
-
-    //비밀번호 업데이트
-    //void updatePassword(Integer userId, String password);
-
 }
