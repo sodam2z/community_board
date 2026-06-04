@@ -5,6 +5,7 @@ import community_board.dto.UserLoginResponse;
 import community_board.global.response.ApiResponse;
 import community_board.service.AuthService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,13 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
-
-    //생성자 주입
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     //로그인 API
     @PostMapping

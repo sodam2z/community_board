@@ -6,18 +6,17 @@ import community_board.dto.UserLoginResponse;
 import community_board.global.exception.BusinessException;
 import community_board.global.exception.ErrorCode;
 import community_board.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuthService {
     private final UserRepository userRepository;
-
-    //생성자 주입
-    public AuthService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
     /*로그인 비즈니스 로직
     1. 이메일로 User 조회
     2. 없으면 LOGIN_FAILED
