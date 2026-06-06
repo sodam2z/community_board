@@ -1,46 +1,89 @@
 package community_board.global.exception;
 
-import community_board.global.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-//전체 Controller에서 발생하는 예외 공통 처리
+import java.util.List;
+
 @RestControllerAdvice
-public class GlobalExceptionHandler {
-    //BusinessException 처리
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+@Slf4j
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    // RestApiException 처리
+    @ExceptionHandler(RestApiException.class)
+    public ResponseEntity<Object> handleCustomException(RestApiException e) {
         ErrorCode errorCode = e.getErrorCode();
-        return ResponseEntity.status(errorCode.getHttpStatus()).body(ApiResponse.of(errorCode.getCode()));
+        return handleExceptionInternal(errorCode);
     }
-    //@Valid 실패 처리
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        String field = e.getBindingResult().getFieldError().getField();
-        String validationCode = e.getBindingResult().getFieldError().getCode();
 
-        if ("NotBlank".equals(validationCode)) {
-            return ResponseEntity.status(ErrorCode.REQUIRED_MISSING.getHttpStatus()).body(ApiResponse.of(ErrorCode.REQUIRED_MISSING.getCode()));
-        }
-
-        if ("email".equals(field)) {
-            return ResponseEntity.status(ErrorCode.EMAIL_POLICY_VIOLATION.getHttpStatus()).body(ApiResponse.of(ErrorCode.EMAIL_POLICY_VIOLATION.getCode()));
-        }
-        if ("password".equals(field)) {
-            return ResponseEntity.status(ErrorCode.PASSWORD_POLICY_VIOLATION.getHttpStatus()).body(ApiResponse.of(ErrorCode.PASSWORD_POLICY_VIOLATION.getCode()));
-        }
-        if ("nickname".equals(field)) {
-            return ResponseEntity.status(ErrorCode.NICKNAME_POLICY_VIOLATION.getHttpStatus()).body(ApiResponse.of(ErrorCode.NICKNAME_POLICY_VIOLATION.getCode()));
-        }
-
-        return ResponseEntity.status(ErrorCode.REQUIRED_MISSING.getHttpStatus()).body(ApiResponse.of(ErrorCode.REQUIRED_MISSING.getCode()));
-
+    // IllegalArgumentException 처리
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException e) {
+        log.warn("handleIllegalArgument", e);
+        return handleExceptionInternal(CommonErrorCode.REQUIRED_MISSING, e.getMessage());
     }
-    //서버 오류 처리
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        return ResponseEntity.status(ErrorCode.SERVER_ERROR.getHttpStatus()).body(ApiResponse.of(ErrorCode.SERVER_ERROR.getCode()));
+
+    // @Valid 실패 처리
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        List<ErrorResponse.ValidationError> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(ErrorResponse.ValidationError::of)
+                .toList();
+
+        ErrorResponse response = ErrorResponse.builder()
+                .code(CommonErrorCode.REQUIRED_MISSING.name())
+                .message(CommonErrorCode.REQUIRED_MISSING.getMessage())
+                .errors(errors)
+                .build();
+
+        return ResponseEntity
+                .status(CommonErrorCode.REQUIRED_MISSING.getHttpStatus())
+                .body(response);
+    }
+
+    // 공통 응답 생성 — ErrorCode만 받는 경우
+    private ResponseEntity<Object> handleExceptionInternal(ErrorCode errorCode) {
+        ErrorResponse response = makeErrorResponse(errorCode);
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(response);
+    }
+
+    // 공통 응답 생성 — ErrorCode + 메시지 override
+    private ResponseEntity<Object> handleExceptionInternal(ErrorCode errorCode, String message) {
+        ErrorResponse response = makeErrorResponse(errorCode, message);
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(response);
+    }
+
+    private ErrorResponse makeErrorResponse(ErrorCode errorCode) {
+        return ErrorResponse.builder()
+                .code(errorCode.name())
+                .message(errorCode.getMessage())
+                .errors(List.of())
+                .build();
+    }
+
+    private ErrorResponse makeErrorResponse(ErrorCode errorCode, String message) {
+        return ErrorResponse.builder()
+                .code(errorCode.name())
+                .message(message)
+                .errors(List.of())
+                .build();
     }
 }

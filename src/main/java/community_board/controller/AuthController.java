@@ -2,7 +2,6 @@ package community_board.controller;
 
 import community_board.dto.UserLoginRequest;
 import community_board.dto.UserLoginResponse;
-import community_board.global.response.ApiResponse;
 import community_board.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +19,8 @@ public class AuthController {
 
     //로그인 API
     @PostMapping
-    public ResponseEntity<ApiResponse<UserLoginResponse>> login(@Valid @RequestBody UserLoginRequest request) {
+    public ResponseEntity<UserLoginResponse> login(@Valid @RequestBody UserLoginRequest request) {
         UserLoginResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.of("USER_LOGIN", response));
+        return ResponseEntity.ok(response);
     }
 }

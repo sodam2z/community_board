@@ -3,12 +3,13 @@ package community_board.service;
 import community_board.domain.User;
 import community_board.dto.UserLoginRequest;
 import community_board.dto.UserLoginResponse;
-import community_board.global.exception.BusinessException;
-import community_board.global.exception.ErrorCode;
+import community_board.global.exception.CommonErrorCode;
+import community_board.global.exception.RestApiException;
+import community_board.global.exception.UserErrorCode;
 import community_board.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -27,12 +28,12 @@ public class AuthService {
         Optional<User> optionalUser = userRepository.findByEmail(userLoginRequest.getEmail());
 
         if (optionalUser.isEmpty()) {
-            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+            throw new RestApiException(CommonErrorCode.REQUIRED_MISSING);
         }
         User user = optionalUser.get();
 
         if (!user.getPassword().equals(userLoginRequest.getPassword())) {
-            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+            throw new RestApiException(UserErrorCode.LOGIN_FAILED);
         }
 
         return new UserLoginResponse(user.getUserId(),user.getNickname(),user.getProfileImage());
