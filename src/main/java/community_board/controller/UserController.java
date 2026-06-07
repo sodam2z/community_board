@@ -2,6 +2,7 @@ package community_board.controller;
 
 import community_board.dto.UserSignupRequest;
 import community_board.dto.UserSignupResponse;
+import community_board.global.response.ApiResponse;
 import community_board.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,9 @@ public class UserController {
 
     //회원가입 API
     @PostMapping
-    public ResponseEntity<UserSignupResponse> signup(@Valid @RequestBody UserSignupRequest request) {
+    public ResponseEntity<ApiResponse<UserSignupResponse>> signup(@Valid @RequestBody UserSignupRequest request) {
         UserSignupResponse response = userService.signup(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("USER_CREATED", response));
     }
 }

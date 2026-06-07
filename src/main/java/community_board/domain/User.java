@@ -2,6 +2,10 @@ package community_board.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -11,22 +15,33 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
     private Integer userId;
-    @Column(nullable = false, unique = true, length = 50)
+
+    @Column(nullable = false, unique = true, length = 320)
     private String email;
+
     @Column(nullable = false)
     private String password;
-    @Column(nullable = false, unique = true, length = 50)
+
+    @Column(nullable = false, unique = true, length = 10)
     private String nickname;
-    @Column(name = "profile_image")
-    private String profileImage;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     protected User() {}
 
-    public User(String email, String password, String nickname, String profileImage) {
+    public User(String email, String password, String nickname) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
-        this.profileImage = profileImage;
     }
 
 }

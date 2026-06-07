@@ -4,13 +4,11 @@ public class UserSignupResponse {
     private final Integer userId;
     private final String email;
     private final String nickname;
-    private final String profileImage;
 
-    public UserSignupResponse(Integer userId, String email, String nickname, String profileImage) {
+    public UserSignupResponse(Integer userId, String email, String nickname ) {
         this.userId = userId;
         this.email = email;
         this.nickname = nickname;
-        this.profileImage = profileImage;
     }
 
     public Integer getUserId() {
@@ -23,10 +21,6 @@ public class UserSignupResponse {
 
     public String getNickname() {
         return nickname;
-    }
-
-    public String getProfileImage() {
-        return profileImage;
     }
 
 }
