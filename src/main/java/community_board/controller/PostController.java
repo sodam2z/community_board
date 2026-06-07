@@ -1,8 +1,6 @@
 package community_board.controller;
 
-import community_board.dto.post.CreatePostRequest;
-import community_board.dto.post.CreatePostResponse;
-import community_board.dto.post.GetPostResponse;
+import community_board.dto.post.*;
 import community_board.global.response.ApiResponse;
 import community_board.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +26,12 @@ public class PostController {
     public ResponseEntity<?> findPost(@PathVariable Integer postId) {
         GetPostResponse response = postService.findById(postId);
         return ResponseEntity.ok().body(ApiResponse.of("POST_VIEW_SUCCESS", response));
+    }
+
+    @PatchMapping("/posts/{postId}")
+    public ResponseEntity<?> updatePost(@PathVariable Integer postId, @RequestBody UpdatePostRequest request) {
+        UpdatePostResponse response = postService.update(postId, request);
+        return ResponseEntity.ok().body(ApiResponse.of("POST_MODIFIED", response));
     }
 
 }

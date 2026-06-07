@@ -34,7 +34,7 @@ public class Post {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false, updatable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
 
@@ -48,6 +48,11 @@ public class Post {
         this.title = title;
         this.content = content;
         this.user = user;
+    }
+
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
     }
 
 }
