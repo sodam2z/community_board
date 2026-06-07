@@ -19,7 +19,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    //블로그 글 추가 메서드
+    //게시글 추가 메서드
     @Transactional
     public CreatePostResponse save(Integer userId, CreatePostRequest request) {
         User user = userRepository.findById(userId).orElseThrow(
@@ -29,7 +29,7 @@ public class PostService {
         return CreatePostResponse.from(savedPost);
     }
 
-    //블로그 글 단건 조회
+    //게시글 단건 조회
     @Transactional(readOnly = true)
     public GetPostResponse findById(Integer postId) {
         Post post =  postRepository.findById(postId).orElseThrow(
@@ -38,7 +38,7 @@ public class PostService {
         return GetPostResponse.from(post);
     }
 
-    //블로그 글 수정
+    //게시글 수정
     @Transactional
     public UpdatePostResponse update(Integer postId, UpdatePostRequest request) {
         Post post = postRepository.findById(postId).orElseThrow(
@@ -49,6 +49,15 @@ public class PostService {
         post.update(newTitle, newContent);
 
         return UpdatePostResponse.from(post);
+    }
+
+    //게시글 삭제
+    @Transactional
+    public void deleteById(Integer postId) {
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+        postRepository.delete(post);
     }
 
 }

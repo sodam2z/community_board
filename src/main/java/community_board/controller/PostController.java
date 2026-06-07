@@ -34,4 +34,10 @@ public class PostController {
         return ResponseEntity.ok().body(ApiResponse.of("POST_MODIFIED", response));
     }
 
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<?> deletePost(@PathVariable Integer postId) {
+        postService.deleteById(postId);
+        return ResponseEntity.noContent().build();
+    }
+
 }
