@@ -1,4 +1,4 @@
-package community_board.dto;
+package community_board.dto.user;
 
 public class UserLoginResponse {
 

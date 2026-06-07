@@ -2,8 +2,10 @@ package community_board.service;
 
 import community_board.domain.Post;
 import community_board.domain.User;
-import community_board.dto.CreatePostRequest;
-import community_board.dto.CreatePostResponse;
+import community_board.dto.post.CreatePostRequest;
+import community_board.dto.post.CreatePostResponse;
+import community_board.dto.post.GetPostResponse;
+import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.repository.PostRepository;
@@ -26,4 +28,13 @@ public class PostService {
         Post savedPost = postRepository.save(request.toEntity(user));
         return CreatePostResponse.from(savedPost);
     }
+
+    //블로그 글 단건 조회
+    public GetPostResponse findById(Integer postId) {
+        Post post =  postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+        return GetPostResponse.from(post);
+    }
+
 }

@@ -1,7 +1,7 @@
 package community_board.controller;
 
-import community_board.dto.UserLoginRequest;
-import community_board.dto.UserLoginResponse;
+import community_board.dto.user.UserLoginRequest;
+import community_board.dto.user.UserLoginResponse;
 import community_board.global.response.ApiResponse;
 import community_board.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;

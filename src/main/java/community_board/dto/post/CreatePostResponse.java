@@ -1,4 +1,4 @@
-package community_board.dto;
+package community_board.dto.post;
 
 import community_board.domain.Post;
 import lombok.AllArgsConstructor;
