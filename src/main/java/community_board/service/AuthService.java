@@ -2,8 +2,8 @@ package community_board.service;
 
 import community_board.domain.RefreshToken;
 import community_board.domain.User;
-import community_board.dto.UserLoginRequest;
-import community_board.dto.UserLoginResponse;
+import community_board.dto.user.UserLoginRequest;
+import community_board.dto.user.UserLoginResponse;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.jwt.JwtProvider;

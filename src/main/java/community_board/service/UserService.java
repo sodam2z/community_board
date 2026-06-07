@@ -1,8 +1,8 @@
 package community_board.service;
 
 import community_board.domain.User;
-import community_board.dto.UserSignupRequest;
-import community_board.dto.UserSignupResponse;
+import community_board.dto.user.UserSignupRequest;
+import community_board.dto.user.UserSignupResponse;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.repository.UserRepository;

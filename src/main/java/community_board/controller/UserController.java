@@ -1,7 +1,7 @@
 package community_board.controller;
 
-import community_board.dto.UserSignupRequest;
-import community_board.dto.UserSignupResponse;
+import community_board.dto.user.UserSignupRequest;
+import community_board.dto.user.UserSignupResponse;
 import community_board.global.response.ApiResponse;
 import community_board.service.UserService;
 import jakarta.validation.Valid;
