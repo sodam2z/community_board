@@ -8,6 +8,7 @@ import community_board.global.exception.UserErrorCode;
 import community_board.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Transactional(readOnly = true)
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     //회원가입 비즈니스 로직
     @Transactional
@@ -27,13 +29,15 @@ public class UserService {
         }
         //DTO -> domain
         User user = new User(
-                userSignupRequest.getEmail(), userSignupRequest.getPassword(), userSignupRequest.getNickname(), userSignupRequest.getProfileImage()
+                userSignupRequest.getEmail(),
+                passwordEncoder.encode(userSignupRequest.getPassword()),
+                userSignupRequest.getNickname()
         );
 
         //DB에 user 저장
         User savedUser = userRepository.save(user);
 
-        return new UserSignupResponse(savedUser.getUserId(), savedUser.getEmail(), savedUser.getNickname(), savedUser.getProfileImage());
+        return new UserSignupResponse(savedUser.getUserId(), savedUser.getEmail(), savedUser.getNickname());
 
 
     }

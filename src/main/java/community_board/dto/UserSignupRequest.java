@@ -17,15 +17,10 @@ public class UserSignupRequest {
     @Size(min = 8, max = 20, message = "비밀번호는 최소 8자 이상 최대 20자 이하입니다.")
     private String password;
 
-    private String profileImage;
-
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-    public String getProfileImage() { return profileImage; }
-    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
-
 }
