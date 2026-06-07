@@ -16,8 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,7 +26,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
 
     private static final int ACCESS_TOKEN_EXPIRATION = 15 * 60;
-    private static final int REFRESH_TOKEN_EXPIRATION = 14 * 24 * 3600;
+    private static final int REFRESH_TOKEN_EXPIRATION = 14 * 24 * 60 * 60;
 
     @Transactional
     public UserLoginResponse login(
@@ -61,59 +59,18 @@ public class AuthService {
         if (refreshToken != null && !refreshToken.isBlank()) {
             // 로그아웃한 Refresh Token이 다시 사용되지 않도록 DB에서 삭제한다.
             refreshTokenRepository
-                    .findByTokenAndRevokedFalse(refreshToken)
+                    .findByToken(refreshToken)
                     .ifPresent(refreshTokenRepository::delete);
         }
         addTokenCookie(response, "accessToken", null, 0);
         addTokenCookie(response, "refreshToken", null, 0);
     }
 
-    @Transactional
-    public TokenResponse refreshTokens(
-            String refreshToken,
-            HttpServletResponse response
-    ) {
-        try {
-            // JWT 서명과 JWT 자체의 만료 시간을 먼저 검사한다.
-            jwtProvider.parse(refreshToken);
-
-            // DB에도 존재하고 revoked=false인 토큰인지 확인한다.
-            RefreshToken entity = refreshTokenRepository
-                    .findByTokenAndRevokedFalse(refreshToken)
-                    .orElse(null);
-
-            if (entity == null || entity.getExpiresAt().isBefore(LocalDateTime.now())) {
-                return null;
-            }
-
-            Integer userId = Integer.valueOf(
-                    jwtProvider.parse(refreshToken).getBody().getSubject()
-            );
-            User user = userRepository.findById(userId).orElse(null);
-
-            if (user == null) {
-                return null;
-            }
-
-            String newAccessToken = jwtProvider.createAccessToken(user.getUserId());
-            // Refresh Token은 유지하고 Access Token 쿠키만 교체한다.
-            addTokenCookie(response, "accessToken", newAccessToken, ACCESS_TOKEN_EXPIRATION);
-
-            return new TokenResponse(newAccessToken, refreshToken);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     private TokenResponse generateAndSaveTokens(User user) {
-        String accessToken = jwtProvider.createAccessToken(user.getUserId());
-        String refreshToken = jwtProvider.createRefreshToken(user.getUserId());
+        String accessToken = jwtProvider.generateAccessToken(user);
+        String refreshToken = jwtProvider.generateRefreshToken(user);
 
-        RefreshToken refreshEntity = new RefreshToken();
-        refreshEntity.setUserId(user.getUserId());
-        refreshEntity.setToken(refreshToken);
-        refreshEntity.setExpiresAt(LocalDateTime.now().plusSeconds(REFRESH_TOKEN_EXPIRATION));
-        refreshEntity.setRevoked(false);
+        RefreshToken refreshEntity = new RefreshToken(user.getUserId(), refreshToken);
         refreshTokenRepository.save(refreshEntity);
 
         return new TokenResponse(accessToken, refreshToken);

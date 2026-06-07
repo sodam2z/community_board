@@ -18,6 +18,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    public User findById(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new RestApiException(
+                                UserErrorCode.USER_NOT_FOUND
+                        )
+                );
+    }
+
     //회원가입 비즈니스 로직
     @Transactional
     public UserSignupResponse signup(UserSignupRequest userSignupRequest) {

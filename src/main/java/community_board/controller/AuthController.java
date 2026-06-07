@@ -2,8 +2,6 @@ package community_board.controller;
 
 import community_board.dto.UserLoginRequest;
 import community_board.dto.UserLoginResponse;
-import community_board.global.exception.CommonErrorCode;
-import community_board.global.exception.RestApiException;
 import community_board.global.response.ApiResponse;
 import community_board.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,25 +34,5 @@ public class AuthController {
     ) {
         authService.logout(refreshToken, response);
         return ResponseEntity.noContent().build();
-    }
-
-    // Access Token 재발급 POST /auth/refresh
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<Void>> refresh(
-            @CookieValue(value = "refreshToken", required = false) String refreshToken,
-            HttpServletResponse response
-    ) {
-        if (refreshToken == null || refreshToken.isBlank()) {
-            throw new RestApiException(CommonErrorCode.UNAUTHENTICATED_ACCESS);
-        }
-
-        AuthService.TokenResponse tokenResponse =
-                authService.refreshTokens(refreshToken, response);
-
-        if (tokenResponse == null) {
-            throw new RestApiException(CommonErrorCode.UNAUTHENTICATED_ACCESS);
-        }
-
-        return ResponseEntity.ok(ApiResponse.of("TOKEN_REFRESHED"));
     }
 }

@@ -1,0 +1,57 @@
+package community_board.controller;
+
+import community_board.dto.CreateAccessTokenRequest;
+import community_board.dto.CreateAccessTokenResponse;
+import community_board.global.exception.RestApiException;
+import community_board.global.exception.UserErrorCode;
+import community_board.global.response.ApiResponse;
+import community_board.service.TokenService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RequiredArgsConstructor
+@RestController
+public class TokenController {
+    private static final int ACCESS_TOKEN_EXPIRATION = 15 * 60;
+
+    private final TokenService tokenService;
+
+    @PostMapping("/token")
+    public ResponseEntity<ApiResponse<CreateAccessTokenResponse>> createAccessToken(
+            @Valid @RequestBody(required = false) CreateAccessTokenRequest request,
+            @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
+            HttpServletResponse httpResponse
+    ) {
+        String refreshToken = request != null && StringUtils.hasText(request.getRefreshToken())
+                ? request.getRefreshToken()
+                : refreshTokenCookie;
+
+        if (!StringUtils.hasText(refreshToken)) {
+            throw new RestApiException(UserErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String newAccessToken = tokenService.createNewAccessToken(refreshToken);
+        addAccessTokenCookie(httpResponse, newAccessToken);
+
+        CreateAccessTokenResponse response = new CreateAccessTokenResponse(newAccessToken);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("TOKEN_CREATED", response));
+    }
+
+    private void addAccessTokenCookie(HttpServletResponse response, String accessToken) {
+        Cookie cookie = new Cookie("accessToken", accessToken);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(ACCESS_TOKEN_EXPIRATION);
+        response.addCookie(cookie);
+    }
+}
