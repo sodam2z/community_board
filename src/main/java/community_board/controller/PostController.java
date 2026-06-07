@@ -4,6 +4,8 @@ import community_board.dto.post.*;
 import community_board.global.response.ApiResponse;
 import community_board.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +40,14 @@ public class PostController {
     public ResponseEntity<?> deletePost(@PathVariable Integer postId) {
         postService.deleteById(postId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/posts")
+    public ResponseEntity<?> getPosts(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit) {
+        Pageable pageable = PageRequest.of(offset, limit);
+        return ResponseEntity.ok().body(ApiResponse.of("POST_LIST_SUCCESS", postService.findPostList(pageable)));
     }
 
 }

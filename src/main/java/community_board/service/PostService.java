@@ -9,6 +9,8 @@ import community_board.global.exception.UserErrorCode;
 import community_board.repository.PostRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,12 @@ public class PostService {
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
         postRepository.delete(post);
+    }
+
+    //게시글 목록 조회
+    @Transactional(readOnly = true)
+    public Slice<PostListResponse> findPostList(Pageable pagable) {
+        return postRepository.findPostList(pagable);
     }
 
 }
