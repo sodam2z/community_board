@@ -43,6 +43,8 @@ public class AuthService {
         // 한 사용자에게 Refresh Token을 하나만 허용하기 위해 기존 토큰을 삭제한다.
         refreshTokenRepository.deleteByUserId(user.getUserId());
 
+        refreshTokenRepository.flush();
+
         // 새 토큰을 만들고 Refresh Token은 DB에 저장한다.
         TokenResponse tokenResponse = generateAndSaveTokens(user);
         // 브라우저가 이후 요청에서 자동 전송하도록 두 토큰을 쿠키에 담는다.
