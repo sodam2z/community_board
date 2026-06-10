@@ -3,12 +3,14 @@ package community_board.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@SQLRestriction("deleted_at IS NULL")
 @Table(name = "user")
 public class User {
     @Id
@@ -42,6 +44,18 @@ public class User {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
+    }
+
+    public void update(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
     }
 
 }
