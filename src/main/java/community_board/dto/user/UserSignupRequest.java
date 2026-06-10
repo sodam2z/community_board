@@ -3,18 +3,24 @@ package community_board.dto.user;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
 public class UserSignupRequest {
-    @NotBlank(message = "닉네임은 필수 입력 값입니다.")
-    @Size(max = 10,message = "닉네임은 최대 10자까지 가능합니다.")
+    @NotBlank(message = "{user.nickname.required}")
+    @Size(max = 10, message = "{user.nickname.size}")
     private String nickname;
 
-    @Email(message = "이메일 형식이 올바르지 않습니다.")
-    @NotBlank(message = "이메일은 필수 입력 값입니다.")
+    @NotBlank(message = "{user.email.required}")
+    @Email(message = "{user.email.invalid}")
     private String email;
 
-    @NotBlank(message = "비밀번호는 필수 입력 값입니다.")
-    @Size(min = 8, max = 20, message = "비밀번호는 최소 8자 이상 최대 20자 이하입니다.")
+    @NotBlank(message = "{user.password.required}")
+    @Size(min = 8, max = 20, message = "{user.password.size}")
     private String password;
 
     public String getNickname() { return nickname; }

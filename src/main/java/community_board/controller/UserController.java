@@ -1,8 +1,6 @@
 package community_board.controller;
 
-import community_board.dto.user.GetUserResponse;
-import community_board.dto.user.UserSignupRequest;
-import community_board.dto.user.UserSignupResponse;
+import community_board.dto.user.*;
 import community_board.global.response.ApiResponse;
 import community_board.service.UserService;
 import jakarta.validation.Valid;
@@ -13,13 +11,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
 
     //회원가입 API
-    @PostMapping("/users")
+    @PostMapping
     public ResponseEntity<ApiResponse<UserSignupResponse>> signup(@Valid @RequestBody UserSignupRequest request) {
         UserSignupResponse response = userService.signup(request);
 
@@ -28,12 +26,23 @@ public class UserController {
 
 
     //회원 정보 조회
-    @GetMapping("/users/{userId}")
+    @GetMapping("/{userId}")
     public ResponseEntity<ApiResponse<GetUserResponse>> getUser(
             @PathVariable Integer userId,
             @AuthenticationPrincipal Integer loginUserId
     ) {
         GetUserResponse response = userService.getUserInfo(userId, loginUserId);
         return ResponseEntity.ok(ApiResponse.of("USER_INFO", response));
+    }
+
+    //회원 정보 수정
+    @PatchMapping("/{userId}")
+    public ResponseEntity<ApiResponse<UpdateUserResponse>> updateUser(
+            @PathVariable Integer userId,
+            @AuthenticationPrincipal Integer loginUserId,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        UpdateUserResponse response = userService.updateUserInfo(userId, loginUserId, request);
+        return ResponseEntity.ok(ApiResponse.of("USER_MODIFIED", response));
     }
 }
