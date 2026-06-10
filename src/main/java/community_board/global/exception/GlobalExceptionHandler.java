@@ -45,13 +45,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList();
 
         ErrorResponse response = ErrorResponse.builder()
-                .code(CommonErrorCode.REQUIRED_MISSING.name())
-                .message(CommonErrorCode.REQUIRED_MISSING.getMessage())
+                .code(CommonErrorCode.VALIDATION_FAILED.name())
+                .message(CommonErrorCode.VALIDATION_FAILED.getMessage())
                 .errors(errors)
                 .build();
 
         return ResponseEntity
-                .status(CommonErrorCode.REQUIRED_MISSING.getHttpStatus())
+                .status(CommonErrorCode.VALIDATION_FAILED.getHttpStatus())
                 .body(response);
     }
 

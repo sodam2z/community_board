@@ -1,17 +1,15 @@
 package community_board.service;
 
 import community_board.domain.User;
-import community_board.dto.user.GetUserResponse;
-import community_board.dto.user.UserSignupRequest;
-import community_board.dto.user.UserSignupResponse;
+import community_board.dto.user.*;
 import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +41,24 @@ public class UserService {
         if (!userId.equals(loginUserId)) {
             throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
         }
+    }
+
+    //회원 정보 수정
+    @Transactional
+    public UpdateUserResponse updateUserInfo(Integer userId, Integer loginUserId, UpdateUserRequest request) {
+
+        validateUserAccess(userId, loginUserId);
+
+        User user = findById(userId);
+        String newNickname = request.getNickname();
+
+        if (!user.getNickname().equals(newNickname) && userRepository.existsByNickname(newNickname)) {
+            throw new RestApiException(UserErrorCode.NICKNAME_DUPLICATED);
+        }
+
+        user.update(newNickname);
+
+        return UpdateUserResponse.from(user);
     }
 
     //회원가입 비즈니스 로직
