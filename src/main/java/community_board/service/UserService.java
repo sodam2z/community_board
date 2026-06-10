@@ -78,6 +78,7 @@ public class UserService {
 
         //비밀번호 암호화 -> 비밀번호 업데이트
         String encodedPassword = passwordEncoder.encode(request.getPassword());
+        //TODO: 비밀번호 변경 후 토큰 재발급 미구현
         user.updatePassword(encodedPassword);
     }
 
