@@ -3,6 +3,7 @@ package community_board.service;
 import community_board.domain.Post;
 import community_board.domain.User;
 import community_board.dto.post.*;
+import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
@@ -42,10 +43,16 @@ public class PostService {
 
     //게시글 수정
     @Transactional
-    public UpdatePostResponse update(Integer postId, UpdatePostRequest request) {
+    public UpdatePostResponse update(Integer postId, Integer loginUserId, UpdatePostRequest request) {
         Post post = postRepository.findById(postId).orElseThrow(
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
+
+        //본인 게시물만 수정 가능
+        if (!post.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
         String newTitle = request.getTitle() != null ? request.getTitle() : post.getTitle();
         String newContent = request.getContent() != null ? request.getContent() : post.getContent();
         post.update(newTitle, newContent);
@@ -55,10 +62,16 @@ public class PostService {
 
     //게시글 삭제
     @Transactional
-    public void deleteById(Integer postId) {
+    public void deleteById(Integer postId, Integer loginUserId) {
         Post post = postRepository.findById(postId).orElseThrow(
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
+
+        //본인 게시글만 삭제 가능
+        if (!post.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
         post.delete();
     }
 
