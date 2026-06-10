@@ -48,4 +48,8 @@ public class User {
         this.nickname = nickname;
     }
 
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
 }

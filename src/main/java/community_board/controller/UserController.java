@@ -11,13 +11,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
 
     //회원가입 API
-    @PostMapping
+    @PostMapping("/users")
     public ResponseEntity<ApiResponse<UserSignupResponse>> signup(@Valid @RequestBody UserSignupRequest request) {
         UserSignupResponse response = userService.signup(request);
 
@@ -26,7 +26,7 @@ public class UserController {
 
 
     //회원 정보 조회
-    @GetMapping("/{userId}")
+    @GetMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<GetUserResponse>> getUser(
             @PathVariable Integer userId,
             @AuthenticationPrincipal Integer loginUserId
@@ -36,7 +36,7 @@ public class UserController {
     }
 
     //회원 정보 수정
-    @PatchMapping("/{userId}")
+    @PatchMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<UpdateUserResponse>> updateUser(
             @PathVariable Integer userId,
             @AuthenticationPrincipal Integer loginUserId,
@@ -44,5 +44,16 @@ public class UserController {
     ) {
         UpdateUserResponse response = userService.updateUserInfo(userId, loginUserId, request);
         return ResponseEntity.ok(ApiResponse.of("USER_MODIFIED", response));
+    }
+
+    //비밀번호 변경
+    @PutMapping("/users/{userId}/password")
+    public ResponseEntity<ApiResponse<Void>> updatePassword(
+            @PathVariable Integer userId,
+            @AuthenticationPrincipal Integer loginUserId,
+            @Valid @RequestBody UpdatePasswordRequest request
+    ){
+        userService.updatePassword(loginUserId, userId, request);
+        return ResponseEntity.noContent().build();
     }
 }

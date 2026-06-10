@@ -61,6 +61,26 @@ public class UserService {
         return UpdateUserResponse.from(user);
     }
 
+    //회원 비밀번호 수정
+    @Transactional
+    public void updatePassword(Integer userId, Integer loginUserId, UpdatePasswordRequest request) {
+
+        //본인만 수정 가능
+        validateUserAccess(userId, loginUserId);
+
+        // 비밀번호 불일치 검증
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RestApiException(UserErrorCode.PASSWORD_MISMATCH);
+        }
+
+        //유저 조회
+        User user = findById(userId);
+
+        //비밀번호 암호화 -> 비밀번호 업데이트
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        user.updatePassword(encodedPassword);
+    }
+
     //회원가입 비즈니스 로직
     @Transactional
     public UserSignupResponse signup(UserSignupRequest userSignupRequest) {
