@@ -59,7 +59,7 @@ public class PostService {
         Post post = postRepository.findById(postId).orElseThrow(
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
-        postRepository.delete(post);
+        post.delete();
     }
 
     //게시글 목록 조회
