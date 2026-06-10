@@ -81,6 +81,17 @@ public class UserService {
         user.updatePassword(encodedPassword);
     }
 
+    //유저 탈퇴
+    @Transactional
+    public void deleteById(Integer userId, Integer loginUserId) {
+
+        validateUserAccess(userId, loginUserId);
+
+        User user = findById(userId);
+
+        user.delete();
+    }
+
     //회원가입 비즈니스 로직
     @Transactional
     public UserSignupResponse signup(UserSignupRequest userSignupRequest) {

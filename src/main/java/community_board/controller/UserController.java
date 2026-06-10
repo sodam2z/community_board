@@ -53,7 +53,17 @@ public class UserController {
             @AuthenticationPrincipal Integer loginUserId,
             @Valid @RequestBody UpdatePasswordRequest request
     ){
-        userService.updatePassword(loginUserId, userId, request);
+        userService.updatePassword(userId, loginUserId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    //회원 탈퇴
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable Integer userId,
+            @AuthenticationPrincipal Integer loginUserId
+    ){
+        userService.deleteById(userId, loginUserId);
         return ResponseEntity.noContent().build();
     }
 }
