@@ -36,8 +36,7 @@ public class CommentService {
         );
 
         //댓글 생성 및 저장
-        PostComment comment = new PostComment(request.getContent(), user, post);
-        PostComment savedComment = commentRepository.save(comment);
+        PostComment savedComment = commentRepository.save(request.toEntity(user,post));
         return CreateCommentResponse.from(savedComment);
 
     }
@@ -56,5 +55,20 @@ public class CommentService {
 
         comment.update(request.getContent());
         return UpdateCommentResponse.from(comment);
+    }
+
+    //댓글 삭제
+    @Transactional
+    public void deleteById(Integer commentId, Integer loginUserId) {
+        PostComment comment = commentRepository.findById(commentId).orElseThrow(
+                () -> new RestApiException(CommentErrorCode.COMMENT_NOT_FOUND)
+        );
+
+        //본인 댓글만 삭제 가능
+        if (!comment.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        comment.delete();
     }
 }

@@ -19,7 +19,7 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping("/posts/{postId}/comments")
-    public ResponseEntity<?> comments(
+    public ResponseEntity<?> comment(
             @PathVariable Integer postId,
             @AuthenticationPrincipal Integer loginUserId,
             @Valid @RequestBody CreateCommentRequest request) {
@@ -28,12 +28,20 @@ public class CommentController {
     }
 
     @PutMapping("/posts/{postId}/comments/{commentId}")
-    public ResponseEntity<?> comments(
+    public ResponseEntity<?> updateComment(
             @PathVariable Integer commentId,
             @AuthenticationPrincipal Integer loginUserId,
             @Valid @RequestBody UpdateCommentRequest request){
         UpdateCommentResponse response = commentService.update(commentId, loginUserId, request);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.of("COMMENT_UPDATED", response));
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @PathVariable Integer commentId,
+            @AuthenticationPrincipal Integer loginUserId){
+        commentService.deleteById(commentId, loginUserId);
+        return ResponseEntity.noContent().build();
     }
 
 }
