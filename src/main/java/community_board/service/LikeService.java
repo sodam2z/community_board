@@ -50,4 +50,31 @@ public class LikeService {
         Integer likeCount = postLikeRepository.countByPostId(post);
         return PostLikeResponse.of(likeCount);
     }
+
+    //좋아요 삭제
+    @Transactional
+    public PostLikeResponse delete(Integer postId, Integer loginUserId ) {
+
+        //유저 조회
+        User user = userRepository.findById(loginUserId).orElseThrow(
+                () -> new RestApiException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        //게시글 조회
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+
+        //좋아요를 누르지 않았으면 예외
+        if (!postLikeRepository.existsByUserIdAndPostId(user, post)) {
+            throw new RestApiException(LikeErrorCode.LIKE_NOT_FOUND);
+        }
+
+        //좋아요 삭제
+        postLikeRepository.deleteByUserIdAndPostId(user,post);
+
+        //좋아요 수 반환
+        Integer likeCount = postLikeRepository.countByPostId(post);
+        return PostLikeResponse.of(likeCount);
+    }
 }
