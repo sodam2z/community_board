@@ -5,9 +5,9 @@ import community_board.domain.PostComment;
 import community_board.domain.User;
 import community_board.dto.comment.CreateCommentRequest;
 import community_board.dto.comment.CreateCommentResponse;
-import community_board.global.exception.PostErrorCode;
-import community_board.global.exception.RestApiException;
-import community_board.global.exception.UserErrorCode;
+import community_board.dto.comment.UpdateCommentRequest;
+import community_board.dto.comment.UpdateCommentResponse;
+import community_board.global.exception.*;
 import community_board.repository.CommentRepository;
 import community_board.repository.PostRepository;
 import community_board.repository.UserRepository;
@@ -40,5 +40,21 @@ public class CommentService {
         PostComment savedComment = commentRepository.save(comment);
         return CreateCommentResponse.from(savedComment);
 
+    }
+
+    //댓글 수정
+    @Transactional
+    public UpdateCommentResponse update(Integer commentId, Integer loginUserId, UpdateCommentRequest request) {
+        PostComment comment = commentRepository.findById(commentId).orElseThrow(
+                () -> new RestApiException(CommentErrorCode.COMMENT_NOT_FOUND)
+        );
+
+        // 본인 댓글만 수정 가능
+        if (!comment.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        comment.update(request.getContent());
+        return UpdateCommentResponse.from(comment);
     }
 }
