@@ -37,4 +37,10 @@ public class ProfileImageController {
         ProfileImageResponse response = profileImageService.updateProfileImage(userId, loginUserId, request);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_MODIFIED", response));
     }
+
+    @DeleteMapping("/users/{userId}/profile-image")
+    public ResponseEntity<?> deleteProfileImage(@PathVariable Integer userId, @AuthenticationPrincipal Integer loginUserId) {
+        profileImageService.deleteProfileImage(userId, loginUserId);
+        return ResponseEntity.noContent().build();
+    }
 }

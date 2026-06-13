@@ -93,6 +93,33 @@ public class ProfileImageService {
         return ProfileImageResponse.from(profileImage);
     }
 
+    //프로필 이미지 삭제
+    @Transactional
+    public void deleteProfileImage(Integer userId, Integer loginUserId) {
+
+        // 1.본인 확인
+        if (!userId.equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        // 2.유저 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
+
+        // 3.기존 프로필 이미지 조회
+        ProfileImage profileImage = profileImageRepository.findByUser(user)
+                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        // 4.파일 삭제
+        fileService.deleteFile(profileImage.getJpgPath());
+        if (profileImage.getWebpPath() != null) fileService.deleteFile(profileImage.getWebpPath());
+        if (profileImage.getThumbnailPath() != null) fileService.deleteFile(profileImage.getThumbnailPath());
+
+        //5.DB 삭제
+        profileImageRepository.delete(profileImage);
+
+    }
+
     // 검증, 변환, 파일 저장 공통 로직
     private ProfileImageResponse processAndUpload(PostProfileImageRequest request) {
         // 1.파일 검증

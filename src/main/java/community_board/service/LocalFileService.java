@@ -35,4 +35,13 @@ public class LocalFileService implements FileService {
             throw new RuntimeException("파일 저장 실패",e);
         }
     }
+
+    @Override
+    public void deleteFile(String path){
+        try {
+            Files.deleteIfExists(Paths.get(path));
+        } catch (IOException e) {
+            throw new RuntimeException("파일 삭제 실패", e);
+        }
+    }
 }
