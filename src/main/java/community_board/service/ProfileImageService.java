@@ -4,6 +4,7 @@ import community_board.domain.ProfileImage;
 import community_board.domain.User;
 import community_board.dto.image.profile.PostProfileImageRequest;
 import community_board.dto.image.profile.PostProfileImageResponse;
+import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.ImageErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
@@ -62,6 +63,26 @@ public class ProfileImageService {
         profileImage.updateWebpAndThumbnail(webpPath, thumbnailPath);
 
         return profileImageRepository.save(profileImage);
+    }
+
+    //프로필 이미지 조회
+    @Transactional(readOnly = true)
+    public PostProfileImageResponse getProfileImage(Integer userId, Integer loginUserId) {
+
+        //1.본인 확인
+        if (!userId.equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        //2.유저 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
+
+        //3.프로필 이미지 조회
+        ProfileImage profileImage = profileImageRepository.findByUser(user)
+                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        return PostProfileImageResponse.from(profileImage);
     }
 
 }

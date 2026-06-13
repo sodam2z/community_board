@@ -6,9 +6,8 @@ import community_board.global.response.ApiResponse;
 import community_board.service.ProfileImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
@@ -21,5 +20,14 @@ public class ProfileImageController {
         PostProfileImageRequest request = new PostProfileImageRequest(file);
         PostProfileImageResponse response = profileImageService.uploadProfileImage(request);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_UPLOADED", response));
+    }
+    @GetMapping("/users/{userId}/profile-image")
+    public ResponseEntity<?> getProfileImage
+            (@PathVariable Integer userId,
+             @AuthenticationPrincipal Integer loginUserId)
+    {
+        PostProfileImageResponse response = profileImageService.getProfileImage(userId, loginUserId);
+        return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_SUCCESS", response));
+
     }
 }
