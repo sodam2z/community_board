@@ -38,3 +38,4 @@ out/
 
 ### Application config ###
 src/main/resources/application.yml
+uploads/

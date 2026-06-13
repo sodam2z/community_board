@@ -34,6 +34,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/users", "/auth", "/token").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/images/profile").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/auth").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())

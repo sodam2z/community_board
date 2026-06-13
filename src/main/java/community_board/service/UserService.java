@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProfileImageService profileImageService;
 
     // 내부 로직에서 User 객체가 필요할 때 사용
     @Transactional(readOnly = true)
@@ -111,6 +112,16 @@ public class UserService {
 
         //DB에 user 저장
         User savedUser = userRepository.save(user);
+
+        // 이미지 경로가 있으면 프로필 이미지 DB 저장
+        if (userSignupRequest.getJpgPath() != null) {
+            profileImageService.saveProfileImage(
+                    savedUser.getUserId(),
+                    userSignupRequest.getJpgPath(),
+                    userSignupRequest.getWebpPath(),
+                    userSignupRequest.getThumbnailPath()
+            );
+        }
 
         return new UserSignupResponse(savedUser.getUserId(), savedUser.getEmail(), savedUser.getNickname());
 
