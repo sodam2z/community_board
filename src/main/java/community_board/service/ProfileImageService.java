@@ -3,7 +3,7 @@ package community_board.service;
 import community_board.domain.ProfileImage;
 import community_board.domain.User;
 import community_board.dto.image.profile.PostProfileImageRequest;
-import community_board.dto.image.profile.PostProfileImageResponse;
+import community_board.dto.image.profile.ProfileImageResponse;
 import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.ImageErrorCode;
 import community_board.global.exception.RestApiException;
@@ -28,26 +28,8 @@ public class ProfileImageService {
     private long maxSize;
 
     // 회원가입 시 이미지 업로드
-    public PostProfileImageResponse uploadProfileImage(PostProfileImageRequest request) {
-        // 1.파일 크기 검증
-        if (!request.isFileSizeValid(maxSize)) {
-            throw new RestApiException(ImageErrorCode.IMAGE_SIZE_EXCEEDED);
-        }
-
-        // 2.확장자 검증
-        if (!request.isFileExtensionValid()) {
-            throw new RestApiException(ImageErrorCode.IMAGE_INVALID_EXTENSION);
-        }
-
-        // 3.이미지 변환
-        var processedFiles = imageProcessor.processImage(request.getFile(), "profile");
-
-        // 4.변환된 파일 로컬 저장
-        String jpgPath = fileService.uploadFile(processedFiles.getJpgFile());
-        String webpPath = fileService.uploadFile(processedFiles.getWebpFile());
-        String thumbnailPath = fileService.uploadFile(processedFiles.getThumbnailFile());
-
-        return PostProfileImageResponse.of(jpgPath, webpPath, thumbnailPath);
+    public ProfileImageResponse uploadProfileImage(PostProfileImageRequest request) {
+        return processAndUpload(request);
     }
 
     // 회원가입 완료 후 DB에 프로필 이미지 저장
@@ -67,7 +49,7 @@ public class ProfileImageService {
 
     //프로필 이미지 조회
     @Transactional(readOnly = true)
-    public PostProfileImageResponse getProfileImage(Integer userId, Integer loginUserId) {
+    public ProfileImageResponse getProfileImage(Integer userId, Integer loginUserId) {
 
         //1.본인 확인
         if (!userId.equals(loginUserId)) {
@@ -82,7 +64,48 @@ public class ProfileImageService {
         ProfileImage profileImage = profileImageRepository.findByUser(user)
                 .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
 
-        return PostProfileImageResponse.from(profileImage);
+        return ProfileImageResponse.from(profileImage);
     }
 
+    // 프로필 이미지 수정
+    @Transactional
+    public ProfileImageResponse updateProfileImage(Integer userId, Integer loginUserId, PostProfileImageRequest request) {
+
+        // 1.본인 확인
+        if (!userId.equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        // 2.유저 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
+
+        // 3.기존 프로필 이미지 조회
+        ProfileImage profileImage = profileImageRepository.findByUser(user)
+                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        // 4.검증, 변환, 파일 저장
+        ProfileImageResponse result = processAndUpload(request);
+
+        // 5.경로 업데이트
+        profileImage.update(result.getJpgPath(), result.getWebpPath(), result.getThumbnailPath());
+
+        return ProfileImageResponse.from(profileImage);
+    }
+
+    // 검증, 변환, 파일 저장 공통 로직
+    private ProfileImageResponse processAndUpload(PostProfileImageRequest request) {
+        // 1.파일 검증
+        request.validate(maxSize);
+
+        // 2.이미지 변환
+        var processedFiles = imageProcessor.processImage(request.getFile(), "profile");
+
+        // 3.변환된 파일 로컬 저장
+        String jpgPath = fileService.uploadFile(processedFiles.getJpgFile());
+        String webpPath = fileService.uploadFile(processedFiles.getWebpFile());
+        String thumbnailPath = fileService.uploadFile(processedFiles.getThumbnailFile());
+
+        return ProfileImageResponse.of(jpgPath, webpPath, thumbnailPath);
+    }
 }

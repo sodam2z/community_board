@@ -54,4 +54,10 @@ public class ProfileImage {
         this.isActive = false;
     }
 
+    public void update(String jpgPath, String webpPath, String thumbnailPath) {
+        this.jpgPath = jpgPath;
+        this.webpPath = webpPath;
+        this.thumbnailPath = thumbnailPath;
+    }
+
 }

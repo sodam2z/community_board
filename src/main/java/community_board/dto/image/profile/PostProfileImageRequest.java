@@ -1,5 +1,7 @@
 package community_board.dto.image.profile;
 
+import community_board.global.exception.ImageErrorCode;
+import community_board.global.exception.RestApiException;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,5 +29,15 @@ public class PostProfileImageRequest {
                 .substring(file.getOriginalFilename().lastIndexOf(".") + 1)
                 .toLowerCase();
         return List.of("jpg", "jpeg", "png").contains(extension);
+    }
+
+    // 파일 검증 통합 메서드
+    public void validate(long maxSize) {
+        if (!isFileSizeValid(maxSize)) {
+            throw new RestApiException(ImageErrorCode.IMAGE_SIZE_EXCEEDED);
+        }
+        if (!isFileExtensionValid()) {
+            throw new RestApiException(ImageErrorCode.IMAGE_INVALID_EXTENSION);
+        }
     }
 }
