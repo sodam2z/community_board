@@ -1,22 +1,30 @@
 package community_board.service;
 
+import community_board.domain.Post;
 import community_board.domain.User;
 import community_board.dto.user.*;
 import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
+import community_board.repository.CommentRepository;
+import community_board.repository.PostRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProfileImageService profileImageService;
+    private final PostImageService postImageService;
 
     // 내부 로직에서 User 객체가 필요할 때 사용
     @Transactional(readOnly = true)
@@ -87,13 +95,27 @@ public class UserService {
     @Transactional
     public void deleteById(Integer userId, Integer loginUserId) {
 
+        //본인만 탈퇴 가능
         validateUserAccess(userId, loginUserId);
 
+        //탈퇴할 유저 조회
         User user = findById(userId);
 
-        // 프로필 이미지 소프트 딜리트
+        //유저가 작성한 게시글과 게시글 이미지 소프트 딜리트
+        List<Post> posts = postRepository.findByUser(user);
+        posts.forEach(post -> {
+            postImageService.deactivatePostImages(post);
+            post.delete();
+        });
+
+        //유저가 작성한 댓글 소프트 딜리트
+        commentRepository.findByUser(user)
+                .forEach(comment -> comment.delete());
+
+        //프로필 이미지 소프트 딜리트
         profileImageService.deactivateProfileImage(user);
 
+        //유저 소프트 딜리트
         user.delete();
     }
 
