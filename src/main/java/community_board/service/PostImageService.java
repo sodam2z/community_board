@@ -58,6 +58,21 @@ public class PostImageService {
         return postImageRepository.save(postImage);
     }
 
+    // 게시글 이미지 조회
+    @Transactional(readOnly = true)
+    public List<PostImageResponse> getPostImages(Integer postId) {
+
+        // 1.게시글 조회
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RestApiException(PostErrorCode.POST_NOT_FOUND));
+
+        // 2.이미지 조회
+        return postImageRepository.findByPost(post)
+                .stream()
+                .map(PostImageResponse::from)
+                .toList();
+    }
+
     // 검증, 변환, 파일 저장 공통 로직
     private PostImageResponse processAndUpload(PostProfileImageRequest request) {
         request.validate(maxSize);

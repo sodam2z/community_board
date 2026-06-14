@@ -6,9 +6,8 @@ import community_board.global.response.ApiResponse;
 import community_board.service.PostImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -25,5 +24,14 @@ public class PostImageController {
                 .toList();
         List<PostImageResponse> response = postImageService.uploadPostImages(requests);
         return ResponseEntity.ok(ApiResponse.of("POST_IMAGE_UPLOADED", response));
+    }
+
+    @GetMapping("/posts/{postId}/images")
+    public ResponseEntity<?> getPostImages(
+            @PathVariable Integer postId,
+            @AuthenticationPrincipal Integer loginUserId
+    ) {
+        List<PostImageResponse> response = postImageService.getPostImages(postId);
+        return ResponseEntity.ok(ApiResponse.of("POST_IMAGE_SUCCESS", response));
     }
 }
