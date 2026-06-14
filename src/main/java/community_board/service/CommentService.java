@@ -5,6 +5,7 @@ import community_board.domain.PostComment;
 import community_board.domain.User;
 import community_board.dto.comment.CreateCommentRequest;
 import community_board.dto.comment.CreateCommentResponse;
+import community_board.dto.comment.GetCommentResponse;
 import community_board.dto.comment.UpdateCommentRequest;
 import community_board.dto.comment.UpdateCommentResponse;
 import community_board.global.exception.*;
@@ -14,6 +15,8 @@ import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @RequiredArgsConstructor// final 붙거나 @NotNull이 붙은 필드의 생성자 추가
 @Service
@@ -39,6 +42,21 @@ public class CommentService {
         PostComment savedComment = commentRepository.save(request.toEntity(user,post));
         return CreateCommentResponse.from(savedComment);
 
+    }
+
+    //댓글 조회
+    @Transactional(readOnly = true)
+    public List<GetCommentResponse> findByPostId(Integer postId) {
+        //게시글 조회
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+
+        //게시글에 작성된 댓글 조회
+        return commentRepository.findByPostOrderByCreatedAtAsc(post)
+                .stream()
+                .map(GetCommentResponse::from)
+                .toList();
     }
 
     //댓글 수정

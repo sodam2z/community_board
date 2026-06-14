@@ -2,6 +2,7 @@ package community_board.controller;
 
 import community_board.dto.comment.CreateCommentRequest;
 import community_board.dto.comment.CreateCommentResponse;
+import community_board.dto.comment.GetCommentResponse;
 import community_board.dto.comment.UpdateCommentRequest;
 import community_board.dto.comment.UpdateCommentResponse;
 import community_board.global.response.ApiResponse;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -25,6 +28,12 @@ public class CommentController {
             @Valid @RequestBody CreateCommentRequest request) {
         CreateCommentResponse response = commentService.save(postId, loginUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("COMMENT_CREATED", response));
+    }
+
+    @GetMapping("/posts/{postId}/comments")
+    public ResponseEntity<?> getComments(@PathVariable Integer postId) {
+        List<GetCommentResponse> response = commentService.findByPostId(postId);
+        return ResponseEntity.ok().body(ApiResponse.of("COMMENT_LIST_SUCCESS", response));
     }
 
     @PutMapping("/posts/{postId}/comments/{commentId}")
