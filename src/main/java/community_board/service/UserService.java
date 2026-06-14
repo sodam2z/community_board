@@ -91,6 +91,9 @@ public class UserService {
 
         User user = findById(userId);
 
+        // 프로필 이미지 소프트 딜리트
+        profileImageService.deactivateProfileImage(user);
+
         user.delete();
     }
 
