@@ -34,4 +34,17 @@ public class PostImageController {
         List<PostImageResponse> response = postImageService.getPostImages(postId);
         return ResponseEntity.ok(ApiResponse.of("POST_IMAGE_SUCCESS", response));
     }
+
+    @PutMapping("/posts/{postId}/images")
+    public ResponseEntity<?> updatePostImages(
+            @PathVariable Integer postId,
+            @AuthenticationPrincipal Integer loginUserId,
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        List<PostProfileImageRequest> requests = files.stream()
+                .map(PostProfileImageRequest::new)
+                .toList();
+        List<PostImageResponse> response = postImageService.updatePostImages(postId, loginUserId, requests);
+        return ResponseEntity.ok(ApiResponse.of("POST_IMAGE_UPDATED", response));
+    }
 }

@@ -4,6 +4,7 @@ import community_board.domain.Post;
 import community_board.domain.PostImage;
 import community_board.dto.image.post.PostImageResponse;
 import community_board.dto.image.profile.PostProfileImageRequest;
+import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.ImageErrorCode;
 import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
@@ -70,6 +71,44 @@ public class PostImageService {
         return postImageRepository.findByPost(post)
                 .stream()
                 .map(PostImageResponse::from)
+                .toList();
+    }
+
+    // 게시글 이미지 수정
+    @Transactional
+    public List<PostImageResponse> updatePostImages(Integer postId, Integer loginUserId, List<PostProfileImageRequest> requests) {
+
+        // 1.게시글 조회
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RestApiException(PostErrorCode.POST_NOT_FOUND));
+
+        // 2.본인 게시글 확인
+        if (!post.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        // 3.장수 제한 확인
+        if (requests.size() > 2) {
+            throw new RestApiException(ImageErrorCode.IMAGE_LIMIT_EXCEEDED);
+        }
+
+        // 4.기존 이미지 파일 삭제, DB 삭제
+        List<PostImage> existingImages = postImageRepository.findByPost(post);
+        existingImages.forEach(image -> {
+            fileService.deleteFile(image.getJpgPath());
+            if (image.getWebpPath() != null) fileService.deleteFile(image.getWebpPath());
+        });
+        postImageRepository.deleteAll(existingImages);
+
+        // 5.새 이미지 변환, 저장, DB 저장
+        return requests.stream()
+                .map(request -> {
+                    PostImageResponse result = processAndUpload(request);
+                    PostImage postImage = PostImage.create(post, result.getJpgPath());
+                    postImage.updateWebp(result.getWebpPath());
+                    postImageRepository.save(postImage);
+                    return result;
+                })
                 .toList();
     }
 
