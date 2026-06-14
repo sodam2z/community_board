@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface PostImageRepository extends JpaRepository<PostImage, Integer> {
     List<PostImage> findByPost(Post post);
+    List<PostImage> findByIsActiveFalse();
 }
