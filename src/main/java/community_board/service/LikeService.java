@@ -3,6 +3,7 @@ package community_board.service;
 import community_board.domain.Post;
 import community_board.domain.PostLike;
 import community_board.domain.User;
+import community_board.dto.like.GetPostLikeResponse;
 import community_board.dto.like.PostLikeResponse;
 import community_board.global.exception.LikeErrorCode;
 import community_board.global.exception.PostErrorCode;
@@ -21,6 +22,25 @@ public class LikeService {
     private final PostLikeRepository postLikeRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+
+    //좋아요 조회
+    @Transactional(readOnly = true)
+    public GetPostLikeResponse findByPostId(Integer postId, Integer loginUserId) {
+        //유저 조회
+        User user = userRepository.findById(loginUserId).orElseThrow(
+                () -> new RestApiException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        //게시글 조회
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+
+        //좋아요 수와 로그인 유저의 좋아요 여부 반환
+        Integer likeCount = postLikeRepository.countByPostId(post);
+        boolean isLiked = postLikeRepository.existsByUserIdAndPostId(user, post);
+        return GetPostLikeResponse.of(likeCount, isLiked);
+    }
 
     //좋아요 생성
     @Transactional
