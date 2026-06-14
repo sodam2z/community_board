@@ -32,15 +32,17 @@ public class ProfileImageController {
     }
 
     @PutMapping("/users/{userId}/profile-image")
-    public ResponseEntity<?> updateProfileImage(@PathVariable Integer userId, @AuthenticationPrincipal Integer loginUserId, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> updateProfileImage(
+            @PathVariable Integer userId,
+            @AuthenticationPrincipal Integer loginUserId,
+            @RequestParam(value = "file", required = false) MultipartFile file
+    ) {
+        if (file == null || file.isEmpty()) {
+            profileImageService.deleteProfileImage(userId, loginUserId);
+            return ResponseEntity.noContent().build();
+        }
         PostProfileImageRequest request = new PostProfileImageRequest(file);
         ProfileImageResponse response = profileImageService.updateProfileImage(userId, loginUserId, request);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_MODIFIED", response));
-    }
-
-    @DeleteMapping("/users/{userId}/profile-image")
-    public ResponseEntity<?> deleteProfileImage(@PathVariable Integer userId, @AuthenticationPrincipal Integer loginUserId) {
-        profileImageService.deleteProfileImage(userId, loginUserId);
-        return ResponseEntity.noContent().build();
     }
 }

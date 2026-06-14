@@ -80,46 +80,18 @@ public class ProfileImageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
 
-        // 3.기존 프로필 이미지 조회
-        ProfileImage profileImage = profileImageRepository.findByUser(user)
-                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
-
-        // 4.검증, 변환, 파일 저장
+        // 3.검증, 변환, 파일 저장
         ProfileImageResponse result = processAndUpload(request);
 
-        // 5.경로 업데이트
+        // 4.기존 프로필 이미지 있으면 업데이트, 없으면 새로 등록
+        ProfileImage profileImage = profileImageRepository.findByUser(user)
+                .orElse(ProfileImage.create(user, result.getJpgPath()));
+
         profileImage.update(result.getJpgPath(), result.getWebpPath(), result.getThumbnailPath());
+        profileImageRepository.save(profileImage);
 
         return ProfileImageResponse.from(profileImage);
     }
-
-    //프로필 이미지 삭제
-    @Transactional
-    public void deleteProfileImage(Integer userId, Integer loginUserId) {
-
-        // 1.본인 확인
-        if (!userId.equals(loginUserId)) {
-            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
-        }
-
-        // 2.유저 조회
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
-
-        // 3.기존 프로필 이미지 조회
-        ProfileImage profileImage = profileImageRepository.findByUser(user)
-                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
-
-        // 4.파일 삭제
-        fileService.deleteFile(profileImage.getJpgPath());
-        if (profileImage.getWebpPath() != null) fileService.deleteFile(profileImage.getWebpPath());
-        if (profileImage.getThumbnailPath() != null) fileService.deleteFile(profileImage.getThumbnailPath());
-
-        //5.DB 삭제
-        profileImageRepository.delete(profileImage);
-
-    }
-
     // 검증, 변환, 파일 저장 공통 로직
     private ProfileImageResponse processAndUpload(PostProfileImageRequest request) {
         // 1.파일 검증
@@ -134,5 +106,34 @@ public class ProfileImageService {
         String thumbnailPath = fileService.uploadFile(processedFiles.getThumbnailFile());
 
         return ProfileImageResponse.of(jpgPath, webpPath, thumbnailPath);
+    }
+
+    // 유저 삭제 시 프로필 이미지 소프트 딜리트
+    @Transactional
+    public void deactivateProfileImage(User user) {
+        profileImageRepository.findByUser(user)
+                .ifPresent(ProfileImage::deactivate);
+    }
+
+    // 프로필 이미지 삭제 (파일 없이 PUT 요청 시)
+    @Transactional
+    public void deleteProfileImage(Integer userId, Integer loginUserId) {
+
+        // 1.본인 확인
+        if (!userId.equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        // 2.유저 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
+
+        // 3.기존 프로필 이미지 조회 - 없으면 그냥 넘어감
+        profileImageRepository.findByUser(user).ifPresent(profileImage -> {
+            fileService.deleteFile(profileImage.getJpgPath());
+            if (profileImage.getWebpPath() != null) fileService.deleteFile(profileImage.getWebpPath());
+            if (profileImage.getThumbnailPath() != null) fileService.deleteFile(profileImage.getThumbnailPath());
+            profileImageRepository.delete(profileImage);
+        });
     }
 }
