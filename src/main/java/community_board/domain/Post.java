@@ -65,4 +65,8 @@ public class Post {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void increaseViewCount() {
+        this.views++;
+    }
+
 }

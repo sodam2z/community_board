@@ -3,6 +3,7 @@ package community_board.service;
 import community_board.domain.Post;
 import community_board.domain.User;
 import community_board.dto.post.*;
+import community_board.event.PostViewedEvent;
 import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
@@ -10,6 +11,7 @@ import community_board.global.exception.UserErrorCode;
 import community_board.repository.PostRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final PostImageService postImageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     //게시글 추가 메서드
     @Transactional
@@ -51,6 +54,9 @@ public class PostService {
         Post post =  postRepository.findById(postId).orElseThrow(
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
+
+        // 게시글 조회 이벤트 발행
+        eventPublisher.publishEvent(new PostViewedEvent(postId));
         return GetPostResponse.from(post);
     }
 
