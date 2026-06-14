@@ -2,6 +2,7 @@ package community_board.repository;
 
 import community_board.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,5 +28,14 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     // nativeQuery=true로 직접 SQL 실행하여 @SQLRestriction 우회
     @Query(value = "SELECT * FROM user WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff", nativeQuery = true)
     List<User> findDeletedBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    // 배치에서 삭제할 유저 ID 조회
+    @Query(value = "SELECT user_id FROM user WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff", nativeQuery = true)
+    List<Integer> findDeletedIdsBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    // 연관 데이터 삭제 후 유저 하드 딜리트
+    @Modifying
+    @Query(value = "DELETE FROM user WHERE user_id IN (:userIds)", nativeQuery = true)
+    int deleteAllByIdsForCleanup(@Param("userIds") List<Integer> userIds);
 
 }
