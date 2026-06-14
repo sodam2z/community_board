@@ -39,8 +39,12 @@ public class PostImageController {
     public ResponseEntity<?> updatePostImages(
             @PathVariable Integer postId,
             @AuthenticationPrincipal Integer loginUserId,
-            @RequestParam("files") List<MultipartFile> files
+            @RequestParam(value = "files", required = false) List<MultipartFile> files
     ) {
+        if (files == null || files.isEmpty()) {
+            postImageService.deletePostImages(postId, loginUserId);
+            return ResponseEntity.noContent().build();
+        }
         List<PostProfileImageRequest> requests = files.stream()
                 .map(PostProfileImageRequest::new)
                 .toList();

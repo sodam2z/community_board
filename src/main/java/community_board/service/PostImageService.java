@@ -112,6 +112,30 @@ public class PostImageService {
                 .toList();
     }
 
+    // 게시글 삭제 시 이미지 소프트 딜리트 (PostService에서 호출)
+    @Transactional
+    public void deactivatePostImages(Post post) {
+        postImageRepository.findByPost(post)
+                .forEach(PostImage::deactivate);
+    }
+
+    // PUT에서 파일 없이 요청 시 이미지 즉시 삭제
+    @Transactional
+    public void deletePostImages(Integer postId, Integer loginUserId) {
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+        if (!post.getUser().getUserId().equals(loginUserId)) {
+            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
+        }
+        List<PostImage> images = postImageRepository.findByPost(post);
+        images.forEach(image -> {
+            fileService.deleteFile(image.getJpgPath());
+            if (image.getWebpPath() != null) fileService.deleteFile(image.getWebpPath());
+        });
+        postImageRepository.deleteAll(images);
+    }
+
     // 검증, 변환, 파일 저장 공통 로직
     private PostImageResponse processAndUpload(PostProfileImageRequest request) {
         request.validate(maxSize);

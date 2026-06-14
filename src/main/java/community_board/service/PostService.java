@@ -85,6 +85,9 @@ public class PostService {
             throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
         }
 
+        // 이미지 소프트 딜리트
+        postImageService.deactivatePostImages(post);
+
         post.delete();
     }
 
