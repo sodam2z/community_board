@@ -2,6 +2,7 @@ package community_board.dto.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,7 +21,10 @@ public class UserSignupRequest {
     private String email;
 
     @NotBlank(message = "{user.password.required}")
-    @Size(min = 8, max = 20, message = "{user.password.size}")
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&])[A-Za-z0-9@$!%*?&]{8,20}$",
+            message = "{user.password.pattern}"
+    )
     private String password;
 
     private String jpgPath;
