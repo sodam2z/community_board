@@ -1,10 +1,13 @@
 package community_board.controller;
 
 import community_board.dto.image.profile.PostProfileImageRequest;
+import community_board.dto.image.profile.ProfileImageFileResponse;
 import community_board.dto.image.profile.ProfileImageResponse;
+import community_board.dto.image.profile.ProfileImageUrlResponse;
 import community_board.global.response.ApiResponse;
 import community_board.service.ProfileImageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -26,9 +29,21 @@ public class ProfileImageController {
             (@PathVariable Integer userId,
              @AuthenticationPrincipal Integer loginUserId)
     {
-        ProfileImageResponse response = profileImageService.getProfileImage(userId, loginUserId);
+        ProfileImageUrlResponse response = profileImageService.getProfileImage(userId, loginUserId);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_SUCCESS", response));
 
+    }
+
+    //프로필 이미지 타입별 실제 파일 조회
+    @GetMapping("/users/{userId}/profile-image/file")
+    public ResponseEntity<Resource> getProfileImageFile(
+            @PathVariable Integer userId,
+            @RequestParam String type
+    ) {
+        ProfileImageFileResponse response = profileImageService.getProfileImageFile(userId, type);
+        return ResponseEntity.ok()
+                .contentType(response.getMediaType())
+                .body(response.getResource());
     }
 
     @PutMapping("/users/{userId}/profile-image")
@@ -42,7 +57,7 @@ public class ProfileImageController {
             return ResponseEntity.noContent().build();
         }
         PostProfileImageRequest request = new PostProfileImageRequest(file);
-        ProfileImageResponse response = profileImageService.updateProfileImage(userId, loginUserId, request);
+        ProfileImageUrlResponse response = profileImageService.updateProfileImage(userId, loginUserId, request);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_MODIFIED", response));
     }
 }
