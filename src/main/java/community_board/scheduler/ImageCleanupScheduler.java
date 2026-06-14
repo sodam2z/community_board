@@ -1,4 +1,4 @@
-package community_board;
+package community_board.scheduler;
 
 import community_board.domain.PostImage;
 import community_board.domain.ProfileImage;
