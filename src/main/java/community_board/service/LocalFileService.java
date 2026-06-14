@@ -17,13 +17,7 @@ public class LocalFileService implements FileService {
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    //파일 업로드 메서드
-    @Override
-    public String uploadFile(File file){
-        return saveFile(file).toString();
-    }
-
-    //프로필 이미지 파일명 저장 메서드
+    //DB 저장용 파일명 반환 메서드
     @Override
     public String uploadFileName(File file) {
         return saveFile(file).getFileName().toString();

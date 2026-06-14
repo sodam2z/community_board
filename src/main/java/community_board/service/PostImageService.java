@@ -2,7 +2,9 @@ package community_board.service;
 
 import community_board.domain.Post;
 import community_board.domain.PostImage;
+import community_board.dto.image.post.PostImageFileResponse;
 import community_board.dto.image.post.PostImageResponse;
+import community_board.dto.image.post.PostImageUrlResponse;
 import community_board.dto.image.profile.PostProfileImageRequest;
 import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.ImageErrorCode;
@@ -12,8 +14,11 @@ import community_board.repository.PostImageRepository;
 import community_board.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -61,7 +66,7 @@ public class PostImageService {
 
     // 게시글 이미지 조회
     @Transactional(readOnly = true)
-    public List<PostImageResponse> getPostImages(Integer postId) {
+    public List<PostImageUrlResponse> getPostImages(Integer postId) {
 
         // 1.게시글 조회
         Post post = postRepository.findById(postId)
@@ -70,13 +75,33 @@ public class PostImageService {
         // 2.이미지 조회
         return postImageRepository.findByPost(post)
                 .stream()
-                .map(PostImageResponse::from)
+                .map(this::createPostImageUrlResponse)
                 .toList();
+    }
+
+    // 게시글 이미지 실제 파일 조회
+    @Transactional(readOnly = true)
+    public PostImageFileResponse getPostImageFile(Integer postId, Integer postImageId, String type) {
+
+        // 1.게시글 조회
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RestApiException(PostErrorCode.POST_NOT_FOUND));
+
+        // 2.게시글에 연결된 이미지 조회
+        PostImage postImage = postImageRepository.findByPostAndPostImageId(post, postImageId)
+                .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        // 3.요청한 타입의 파일 조회, webp 파일이 없으면 jpg 파일로 대체
+        return switch (type.toLowerCase()) {
+            case "jpg" -> getExistingFile(postImage.getJpgPath(), MediaType.IMAGE_JPEG);
+            case "webp" -> getWebpOrJpgFile(postImage);
+            default -> throw new RestApiException(ImageErrorCode.IMAGE_TYPE_INVALID);
+        };
     }
 
     // 게시글 이미지 수정
     @Transactional
-    public List<PostImageResponse> updatePostImages(Integer postId, Integer loginUserId, List<PostProfileImageRequest> requests) {
+    public List<PostImageUrlResponse> updatePostImages(Integer postId, Integer loginUserId, List<PostProfileImageRequest> requests) {
 
         // 1.게시글 조회
         Post post = postRepository.findById(postId)
@@ -107,7 +132,7 @@ public class PostImageService {
                     PostImage postImage = PostImage.create(post, result.getJpgPath());
                     postImage.updateWebp(result.getWebpPath());
                     postImageRepository.save(postImage);
-                    return result;
+                    return createPostImageUrlResponse(postImage);
                 })
                 .toList();
     }
@@ -138,13 +163,72 @@ public class PostImageService {
 
     // 검증, 변환, 파일 저장 공통 로직
     private PostImageResponse processAndUpload(PostProfileImageRequest request) {
+        // 1.파일 검증
         request.validate(maxSize);
 
+        // 2.이미지 변환
         var processedFiles = imageProcessor.processImage(request.getFile(), "post");
 
-        String jpgPath = fileService.uploadFile(processedFiles.getJpgFile());
-        String webpPath = fileService.uploadFile(processedFiles.getWebpFile());
+        // 3.변환된 파일 로컬 저장, DB 저장용 파일명 반환
+        String jpgPath = fileService.uploadFileName(processedFiles.getJpgFile());
+        String webpPath = fileService.uploadFileName(processedFiles.getWebpFile());
 
         return PostImageResponse.of(jpgPath, webpPath);
+    }
+
+    //게시글 이미지 타입별 HTTP 조회 URL 생성
+    private PostImageUrlResponse createPostImageUrlResponse(PostImage postImage) {
+        String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/posts/{postId}/images/{postImageId}/file")
+                .buildAndExpand(
+                        postImage.getPost().getPostId(),
+                        postImage.getPostImageId()
+                )
+                .toUriString();
+
+        return PostImageUrlResponse.of(
+                postImage.getPostImageId(),
+                fileUrl + "?type=jpg",
+                fileUrl + "?type=webp"
+        );
+    }
+
+    //webp 파일이 없으면 jpg 원본 파일 조회
+    private PostImageFileResponse getWebpOrJpgFile(PostImage postImage) {
+        PostImageFileResponse webpFile = getFileIfExists(
+                postImage.getWebpPath(),
+                MediaType.parseMediaType("image/webp")
+        );
+
+        if (webpFile != null) {
+            return webpFile;
+        }
+
+        return getExistingFile(postImage.getJpgPath(), MediaType.IMAGE_JPEG);
+    }
+
+    //저장된 경로에 실제 파일이 있으면 파일과 형식 반환
+    private PostImageFileResponse getFileIfExists(String path, MediaType mediaType) {
+        if (path == null) {
+            return null;
+        }
+
+        Resource resource = fileService.loadFile(path);
+        if (!resource.exists() || !resource.isReadable()) {
+            return null;
+        }
+
+        return PostImageFileResponse.of(resource, mediaType);
+    }
+
+    //반드시 존재해야 하는 파일 조회
+    private PostImageFileResponse getExistingFile(String path, MediaType mediaType) {
+        PostImageFileResponse file = getFileIfExists(path, mediaType);
+
+        if (file == null) {
+            throw new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND);
+        }
+
+        return file;
     }
 }

@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -60,7 +62,7 @@ public class ImageCleanupScheduler {
     }
 
     private void cleanupOrphanFiles() {
-        // DB에 저장된 모든 경로 수집
+        // DB에 저장된 모든 파일명 수집
         List<String> dbPaths = new ArrayList<>();
 
         profileImageRepository.findAll().forEach(image -> {
@@ -74,12 +76,17 @@ public class ImageCleanupScheduler {
             if (image.getWebpPath() != null) dbPaths.add(image.getWebpPath());
         });
 
-        // 로컬 파일과 비교해서 DB에 없는 파일 삭제
+        // 기존 절대경로와 새 파일명 형식을 모두 파일명으로 변환
+        Set<String> dbFileNames = dbPaths.stream()
+                .map(path -> new File(path).getName())
+                .collect(Collectors.toSet());
+
+        // 로컬 파일명과 비교해서 DB에 없는 파일 삭제
         File uploadDirectory = new File(uploadDir);
         File[] localFiles = uploadDirectory.listFiles();
         if (localFiles != null) {
             for (File file : localFiles) {
-                if (!dbPaths.contains(file.getAbsolutePath())) {
+                if (!dbFileNames.contains(file.getName())) {
                     file.delete();
                     log.info("고아 파일 삭제: {}", file.getName());
                 }

@@ -8,10 +8,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PostImageRepository extends JpaRepository<PostImage, Integer> {
     List<PostImage> findByPost(Post post);
+    Optional<PostImage> findByPostAndPostImageId(Post post, Integer postImageId);
     List<PostImage> findByIsActiveFalse();
 
     // 배치에서 게시글과 연결된 이미지 조회
