@@ -21,6 +21,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final PostImageService postImageService;
 
     //게시글 추가 메서드
     @Transactional
@@ -29,6 +30,18 @@ public class PostService {
                 () -> new RestApiException(UserErrorCode.USER_NOT_FOUND)
         );
         Post savedPost = postRepository.save(request.toEntity(user));
+
+        // 이미지 경로가 있으면 DB 저장
+        if (request.getJpgPaths() != null) {
+            for (int i = 0; i < request.getJpgPaths().size(); i++) {
+                postImageService.savePostImage(
+                        savedPost.getPostId(),
+                        request.getJpgPaths().get(i),
+                        request.getWebpPaths().get(i)
+                );
+            }
+        }
+
         return CreatePostResponse.from(savedPost);
     }
 
@@ -72,13 +85,16 @@ public class PostService {
             throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
         }
 
+        // 이미지 소프트 딜리트
+        postImageService.deactivatePostImages(post);
+
         post.delete();
     }
 
     //게시글 목록 조회
     @Transactional(readOnly = true)
-    public Slice<PostListResponse> findPostList(Pageable pagable) {
-        return postRepository.findPostList(pagable);
+    public Slice<PostListResponse> findPostList(Pageable pageable) {
+        return postRepository.findPostList(pageable);
     }
 
 }

@@ -47,8 +47,8 @@ public class ImageProcessor {
             // WEBP 변환
             File webpFile = convertToWebP(inputImage);
 
-            // 썸네일 생성
-            File thumbnailFile = createThumbnail(inputImage, type);
+            // 썸네일 생성 - 프로필 이미지만 썸네일용 생성
+            File thumbnailFile = type.equals("profile") ? createThumbnail(inputImage, type) : null;
 
             return new ProcessedFiles(jpgFile, webpFile, thumbnailFile);
 
