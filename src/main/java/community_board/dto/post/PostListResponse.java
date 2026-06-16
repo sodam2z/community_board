@@ -16,11 +16,17 @@ public class PostListResponse {
     private String title;
     private LocalDateTime updatedAt;
     private int views;
+    private Long commentCount;
+    private Long likeCount;
     private Integer userId;
     private String nickname;
     private String profileImageUrl;
 
     public static PostListResponse from(Post post) {
+        return from(post, 0L, 0L);
+    }
+
+    public static PostListResponse from(Post post, Long commentCount, Long likeCount) {
         Integer userId = post.getUser().getUserId();
 
         return new PostListResponse(
@@ -28,6 +34,8 @@ public class PostListResponse {
                 post.getTitle(),
                 post.getUpdatedAt(),
                 post.getViews(),
+                commentCount,
+                likeCount,
                 userId,
                 post.getUser().getNickname(),
                 createProfileImageUrl(userId)

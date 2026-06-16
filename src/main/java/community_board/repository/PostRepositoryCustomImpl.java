@@ -10,6 +10,8 @@ import org.springframework.data.domain.SliceImpl;
 import java.util.List;
 
 import static community_board.domain.QPost.post;
+import static community_board.domain.QPostComment.postComment;
+import static community_board.domain.QPostLike.postLike;
 
 @RequiredArgsConstructor
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
@@ -24,7 +26,11 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
                 .limit(pageable.getPageSize()+1) // 다음 페이지 존재 여부 확인
                 .fetch()
                 .stream()
-                .map(PostListResponse::from)
+                .map(post -> PostListResponse.from(
+                        post,
+                        countComments(post),
+                        countLikes(post)
+                ))
                 .toList();
 
         boolean hasNext = content.size()> pageable.getPageSize();
@@ -33,5 +39,25 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         }
 
         return new SliceImpl<>(content, pageable, hasNext);
+    }
+
+    private Long countComments(community_board.domain.Post postEntity) {
+        Long count = queryFactory
+                .select(postComment.count())
+                .from(postComment)
+                .where(postComment.post.eq(postEntity))
+                .fetchOne();
+
+        return count == null ? 0L : count;
+    }
+
+    private Long countLikes(community_board.domain.Post postEntity) {
+        Long count = queryFactory
+                .select(postLike.count())
+                .from(postLike)
+                .where(postLike.postId.eq(postEntity))
+                .fetchOne();
+
+        return count == null ? 0L : count;
     }
 }
