@@ -42,8 +42,8 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/users", "/auth", "/token").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/images/profile").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users", "/auth", "/token", "/images/profile").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/*/profile-image", "/users/*/profile-image/file").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/auth").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
@@ -59,7 +59,8 @@ public class SecurityConfig {
 
         //로컬 프론트 개발 서버 주소 허용
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "https://community-board.p-e.kr"
         ));
 
         //프론트에서 사용할 HTTP 메서드 허용

@@ -26,10 +26,9 @@ public class ProfileImageController {
     }
     @GetMapping("/users/{userId}/profile-image")
     public ResponseEntity<?> getProfileImage
-            (@PathVariable Integer userId,
-             @AuthenticationPrincipal Integer loginUserId)
+            (@PathVariable Integer userId)
     {
-        ProfileImageUrlResponse response = profileImageService.getProfileImage(userId, loginUserId);
+        ProfileImageUrlResponse response = profileImageService.getProfileImage(userId);
         return ResponseEntity.ok(ApiResponse.of("PROFILE_IMAGE_SUCCESS", response));
 
     }

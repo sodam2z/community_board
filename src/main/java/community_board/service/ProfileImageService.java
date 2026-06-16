@@ -54,18 +54,13 @@ public class ProfileImageService {
 
     //프로필 이미지 조회
     @Transactional(readOnly = true)
-    public ProfileImageUrlResponse getProfileImage(Integer userId, Integer loginUserId) {
+    public ProfileImageUrlResponse getProfileImage(Integer userId) {
 
-        //1.본인 확인
-        if (!userId.equals(loginUserId)) {
-            throw new RestApiException(CommonErrorCode.FORBIDDEN_ACCESS);
-        }
-
-        //2.유저 조회
+        //1.유저 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(UserErrorCode.USER_NOT_FOUND));
 
-        //3.프로필 이미지 조회
+        //2.프로필 이미지 조회
         ProfileImage profileImage = profileImageRepository.findByUser(user)
                 .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
 
