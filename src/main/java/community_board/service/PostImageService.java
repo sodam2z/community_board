@@ -18,7 +18,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -29,6 +28,7 @@ public class PostImageService {
     private final ImageProcessor imageProcessor;
     private final PostImageRepository postImageRepository;
     private final PostRepository postRepository;
+    private final S3FileService s3FileService;
 
     @Value("${file.max-size}")
     private long maxSize;
@@ -169,27 +169,19 @@ public class PostImageService {
         // 2.이미지 변환
         var processedFiles = imageProcessor.processImage(request.getFile(), "post");
 
-        // 3.변환된 파일 로컬 저장, DB 저장용 파일명 반환
+        // 3.변환된 파일 저장, DB 저장용 경로 반환
         String jpgPath = fileService.uploadFileName(processedFiles.getJpgFile());
         String webpPath = fileService.uploadFileName(processedFiles.getWebpFile());
 
         return PostImageResponse.of(jpgPath, webpPath);
     }
 
-    //게시글 이미지 타입별 HTTP 조회 URL 생성
+    //게시글 이미지 CloudFront 조회 URL 생성
     private PostImageUrlResponse createPostImageUrlResponse(PostImage postImage) {
-        String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/posts/{postId}/images/{postImageId}/file")
-                .buildAndExpand(
-                        postImage.getPost().getPostId(),
-                        postImage.getPostImageId()
-                )
-                .toUriString();
-
         return PostImageUrlResponse.of(
                 postImage.getPostImageId(),
-                fileUrl + "?type=jpg",
-                fileUrl + "?type=webp"
+                s3FileService.getFileUrl(postImage.getJpgPath()),
+                s3FileService.getFileUrl(postImage.getWebpPath())
         );
     }
 

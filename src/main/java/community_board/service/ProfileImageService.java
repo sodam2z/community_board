@@ -18,7 +18,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +27,7 @@ public class ProfileImageService {
     private final ImageProcessor imageProcessor;
     private final ProfileImageRepository profileImageRepository;
     private final UserRepository userRepository;
+    private final S3FileService s3FileService;
 
     @Value("${file.max-size}")
     private long maxSize;
@@ -64,7 +64,7 @@ public class ProfileImageService {
         ProfileImage profileImage = profileImageRepository.findByUser(user)
                 .orElseThrow(() -> new RestApiException(ImageErrorCode.IMAGE_NOT_FOUND));
 
-        return createProfileImageUrlResponse(userId);
+        return createProfileImageUrlResponse(profileImage);
     }
 
     //프로필 이미지 실제 파일 조회
@@ -111,7 +111,7 @@ public class ProfileImageService {
         profileImage.update(result.getJpgPath(), result.getWebpPath(), result.getThumbnailPath());
         profileImageRepository.save(profileImage);
 
-        return createProfileImageUrlResponse(userId);
+        return createProfileImageUrlResponse(profileImage);
     }
     // 검증, 변환, 파일 저장 공통 로직
     private ProfileImageResponse processAndUpload(PostProfileImageRequest request) {
@@ -121,7 +121,7 @@ public class ProfileImageService {
         // 2.이미지 변환
         var processedFiles = imageProcessor.processImage(request.getFile(), "profile");
 
-        // 3.변환된 파일 로컬 저장, DB 저장용 파일명 반환
+        // 3.변환된 파일 저장, DB 저장용 경로 반환
         String jpgPath = fileService.uploadFileName(processedFiles.getJpgFile());
         String webpPath = fileService.uploadFileName(processedFiles.getWebpFile());
         String thumbnailPath = fileService.uploadFileName(processedFiles.getThumbnailFile());
@@ -129,17 +129,12 @@ public class ProfileImageService {
         return ProfileImageResponse.of(jpgPath, webpPath, thumbnailPath);
     }
 
-    //프로필 이미지 타입별 HTTP 조회 URL 생성
-    private ProfileImageUrlResponse createProfileImageUrlResponse(Integer userId) {
-        String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/users/{userId}/profile-image/file")
-                .buildAndExpand(userId)
-                .toUriString();
-
+    //프로필 이미지 CloudFront 조회 URL 생성
+    private ProfileImageUrlResponse createProfileImageUrlResponse(ProfileImage profileImage) {
         return ProfileImageUrlResponse.of(
-                fileUrl + "?type=jpg",
-                fileUrl + "?type=webp",
-                fileUrl + "?type=thumbnail"
+                s3FileService.getFileUrl(profileImage.getJpgPath()),
+                s3FileService.getFileUrl(profileImage.getWebpPath()),
+                s3FileService.getFileUrl(profileImage.getThumbnailPath())
         );
     }
 
