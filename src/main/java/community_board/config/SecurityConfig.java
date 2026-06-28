@@ -44,6 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/users", "/auth", "/token", "/images/profile").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/*/profile-image", "/users/*/profile-image/file").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/auth").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
