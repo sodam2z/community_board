@@ -1,0 +1,518 @@
+name: Backend CD
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Manual release version"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  AWS_REGION: ap-northeast-2
+  AWS_ACCOUNT_ID: "719905537984"
+  ECR_REPOSITORY: community-board-be
+  IMAGE_URI: 719905537984.dkr.ecr.ap-northeast-2.amazonaws.com/community-board-be
+  CONTAINER_PORT: "8080"
+  BAKE_SECONDS: "300" # 트래픽 전환 후 관찰 시간
+  BAKE_CHECK_INTERVAL_SECONDS: "60" # bake 동안 CloudWatch 응답시간 확인 주기
+  RESPONSE_TIME_THRESHOLD_SECONDS: "5" # 평균 2.5s, p95 6.18s 실측 기준으로 회귀 감지
+  HEALTH_CHECK_TIMEOUT_SECONDS: "600" # green target group 헬스체크 최대 대기 시간
+  HEALTH_CHECK_INTERVAL_SECONDS: "20"
+
+  LAUNCH_TEMPLATE_ID: ${{ vars.LAUNCH_TEMPLATE_ID }}
+  ALB_LISTENER_ARN: ${{ vars.ALB_LISTENER_ARN }}
+  APP_CONFIG_PARAMETER_NAME: ${{ vars.APP_CONFIG_PARAMETER_NAME }}
+
+jobs:
+  # job 1
+  release-image:
+    name: Build and push release image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_deploy: ${{ steps.version.outputs.should_deploy }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 버전 결정 로직
+      # 수동 실행 - 입력값 그대로 semver 사용
+      # dev merge - 그 이후 feat: 커밋 있을 때 태그 업데이트
+      - name: Decide release version
+        id: version
+        env:
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            version="$MANUAL_VERSION"
+
+            # 형식 검증
+            if ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "Manual version must be vMAJOR.MINOR.PATCH, for example v1.2.1." >&2
+              exit 1
+            fi
+
+            # push event - feat: 커밋 있을 때 MINOR +1
+            latest_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+            if [ -n "$latest_tag" ] && [ "$(printf '%s\n%s\n' "$latest_tag" "$version" | sort -V | tail -1)" != "$version" ]; then
+              echo "Warning: manual version $version is not newer than latest tag $latest_tag." >&2
+            fi
+
+            echo "version=${version}" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+
+          if [ -z "$latest_tag" ]; then
+            base_version="v0.0.0"
+            commit_range="HEAD"
+          else
+            base_version="$latest_tag"
+            commit_range="${latest_tag}..HEAD"
+          fi
+
+          if ! printf '%s\n' "$base_version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Latest tag '$base_version' is not a vMAJOR.MINOR.PATCH semver tag." >&2
+            exit 1
+          fi
+
+          if ! git log "$commit_range" --pretty=format:"%s" | grep -qE '^feat:'; then
+            echo "No feat: commits found since ${base_version}; skipping automatic minor release."
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          raw="${base_version#v}"
+          major="${raw%%.*}"
+          rest="${raw#*.}"
+          minor="${rest%%.*}"
+          next_minor=$((minor + 1))
+          version="v${major}.${next_minor}.0"
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+
+      # 배포 안하는 경우 이 step 건너뜀
+      - name: Configure AWS credentials
+        if: steps.version.outputs.should_deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.version.outputs.should_deploy == 'true'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build Once, Promote Many
+      # sha 태크 우선 빌드
+      # semver 태그는 이미 빌드된 sha 이미지에 재태깅
+      - name: Build and push Docker image
+        if: steps.version.outputs.should_deploy == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_TAG: ${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          set -euo pipefail
+
+          if aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$VERSION" \
+            --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo "Image tag $VERSION already exists in ECR; skipping image build and push."
+            exit 0
+          fi
+
+          if aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$SOURCE_TAG" \
+            --region "$AWS_REGION" >/dev/null 2>&1; then
+            docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:$SOURCE_TAG"
+          else
+            docker build -t "$ECR_REPOSITORY:$SOURCE_TAG" .
+            docker tag "$ECR_REPOSITORY:$SOURCE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$SOURCE_TAG"
+            docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$SOURCE_TAG"
+          fi
+
+          if ! aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$VERSION" \
+            --region "$AWS_REGION" >/dev/null 2>&1; then
+            docker tag "$ECR_REGISTRY/$ECR_REPOSITORY:$SOURCE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION"
+            docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION"
+          fi
+
+  # job 2
+  deploy:
+    name: Deploy blue-green ASG
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: release-image
+    if: needs.release-image.outputs.should_deploy == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy green ASG and switch ALB
+        env:
+          VERSION: ${{ needs.release-image.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          for required in LAUNCH_TEMPLATE_ID ALB_LISTENER_ARN APP_CONFIG_PARAMETER_NAME; do
+            value="${!required}"
+            if [ -z "$value" ] || printf '%s' "$value" | grep -q '^TODO_'; then
+              echo "$required must be set before deployment." >&2
+              exit 1
+            fi
+          done
+
+          suffix="$(date +%Y%m%d%H%M%S)-${GITHUB_RUN_ID}"
+          green_asg="community-board-be-green-${suffix}"
+          green_tg="cb-be-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          green_tg_arn=""
+
+          blue_tg_arn="$(aws elbv2 describe-rules \
+            --listener-arn "$ALB_LISTENER_ARN" \
+            --region "$AWS_REGION" \
+            --query "Rules[?IsDefault==\`false\` && Actions[0].Type=='forward'].Actions[0].TargetGroupArn | [0]" \
+            --output text)"
+
+          if [ -z "$blue_tg_arn" ] || [ "$blue_tg_arn" = "None" ]; then
+            echo "Could not find current blue target group from path-based rules." >&2
+            exit 1
+          fi
+
+          be_rule_arns="$(aws elbv2 describe-rules \
+            --listener-arn "$ALB_LISTENER_ARN" \
+            --region "$AWS_REGION" \
+            --query "Rules[?Actions[0].TargetGroupArn=='${blue_tg_arn}'].RuleArn" \
+            --output text)"
+
+          if [ -z "$be_rule_arns" ] || [ "$be_rule_arns" = "None" ]; then
+            echo "Could not find backend path-based rules for $blue_tg_arn." >&2
+            exit 1
+          fi
+
+          blue_asg_name="$(aws autoscaling describe-auto-scaling-groups \
+            --query "AutoScalingGroups[?contains(TargetGroupARNs, '${blue_tg_arn}')].AutoScalingGroupName | [0]" \
+            --output text \
+            --region "$AWS_REGION")"
+
+          if [ -z "$blue_asg_name" ] || [ "$blue_asg_name" = "None" ]; then
+            echo "Could not find current blue ASG attached to $blue_tg_arn." >&2
+            exit 1
+          fi
+          
+          # 실패 시 정리/롤백 함수
+          cleanup_green() {
+            set +e
+            aws autoscaling update-auto-scaling-group \
+              --auto-scaling-group-name "$green_asg" \
+              --min-size 0 \
+              --desired-capacity 0 \
+              --region "$AWS_REGION" >/dev/null 2>&1
+            aws autoscaling delete-auto-scaling-group \
+              --auto-scaling-group-name "$green_asg" \
+              --force-delete \
+              --region "$AWS_REGION" >/dev/null 2>&1
+            if [ -n "$green_tg_arn" ]; then
+              aws elbv2 delete-target-group \
+                --target-group-arn "$green_tg_arn" \
+                --region "$AWS_REGION" >/dev/null 2>&1
+            fi
+          }
+
+          rollback() {
+            set +e
+            for rule_arn in $be_rule_arns; do
+              aws elbv2 modify-rule \
+                --rule-arn "$rule_arn" \
+                --actions "Type=forward,TargetGroupArn=$blue_tg_arn" \
+                --region "$AWS_REGION" >/dev/null
+            done
+            cleanup_green
+          }
+          trap rollback ERR
+          
+           # blue의 현재 설정을 그대로 복제
+          blue_asg_json="$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "$blue_asg_name" \
+            --region "$AWS_REGION")"
+
+          desired="$(printf '%s' "$blue_asg_json" | jq -r '.AutoScalingGroups[0].DesiredCapacity')"
+          min_size="$(printf '%s' "$blue_asg_json" | jq -r '.AutoScalingGroups[0].MinSize')"
+          max_size="$(printf '%s' "$blue_asg_json" | jq -r '.AutoScalingGroups[0].MaxSize')"
+          subnets="$(printf '%s' "$blue_asg_json" | jq -r '.AutoScalingGroups[0].VPCZoneIdentifier')"
+          health_check_grace_period="$(printf '%s' "$blue_asg_json" | jq -r '.AutoScalingGroups[0].HealthCheckGracePeriod')"
+
+          if [ -z "$subnets" ] || [ "$subnets" = "null" ]; then
+            echo "Could not read subnet list from blue ASG." >&2
+            exit 1
+          fi
+          
+          blue_tg_json="$(aws elbv2 describe-target-groups \
+            --target-group-arns "$blue_tg_arn" \
+            --region "$AWS_REGION")"
+          health_check_protocol="$(printf '%s' "$blue_tg_json" | jq -r '.TargetGroups[0].HealthCheckProtocol')"
+          health_check_path="$(printf '%s' "$blue_tg_json" | jq -r '.TargetGroups[0].HealthCheckPath')"
+          matcher="$(printf '%s' "$blue_tg_json" | jq -r '.TargetGroups[0].Matcher.HttpCode')"
+          vpc_id="$(printf '%s' "$blue_tg_json" | jq -r '.TargetGroups[0].VpcId')"
+
+          user_data="$(mktemp)"
+
+          cat > "$user_data" <<USERDATA
+          #!/bin/bash
+          set -euo pipefail
+
+          if ! command -v apt-get >/dev/null 2>&1; then
+            echo "Ubuntu-based AMI is required." >&2
+            exit 1
+          fi
+
+          apt-get update -y
+          apt-get install -y docker.io curl unzip
+          systemctl enable --now docker
+          
+          mkdir -p /usr/local/lib/docker/cli-plugins
+          curl -SL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64" \
+          -o /usr/local/lib/docker/cli-plugins/docker-compose
+          chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+          arch="\$(uname -m)"
+          if [ "\$arch" != "x86_64" ]; then
+            echo "t3.small x86_64 instance is expected, but found \$arch." >&2
+            exit 1
+          fi
+
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp
+          /tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+          mkdir -p /opt/community-board-be
+          aws ssm get-parameter \
+            --name "${APP_CONFIG_PARAMETER_NAME}" \
+            --with-decryption \
+            --query 'Parameter.Value' \
+            --output text \
+            --region "${AWS_REGION}" \
+            > /opt/community-board-be/application.yml
+          chmod 644 /opt/community-board-be/application.yml
+
+          for required_config in \
+            '^spring:' \
+            '^[[:space:]]*datasource:' \
+            '^[[:space:]]*url:' \
+            '^[[:space:]]*username:' \
+            '^[[:space:]]*password:' \
+            '^jwt:' \
+            '^[[:space:]]*issuer:' \
+            '^[[:space:]]*secret-key:' \
+            '^cloud:' \
+            '^[[:space:]]*aws:' \
+            '^[[:space:]]*region:' \
+            '^[[:space:]]*static:' \
+            '^[[:space:]]*s3:' \
+            '^[[:space:]]*bucket:' \
+            '^cloudfront:' \
+            '^[[:space:]]*domain:' \
+            '^file:' \
+            '^[[:space:]]*max-size:' \
+            '^[[:space:]]*upload-dir:'; do
+            if ! grep -Eq "\$required_config" /opt/community-board-be/application.yml; then
+              echo "Required config pattern '\$required_config' is missing from /opt/community-board-be/application.yml." >&2
+              exit 1
+            fi
+          done
+
+          cat > /opt/community-board-be/docker-compose.yml <<'COMPOSE'
+          services:
+            community-board-be:
+              image: ${IMAGE_URI}:\${IMAGE_TAG}
+              container_name: community-board-be
+              restart: unless-stopped
+              ports:
+                - "8080:8080"
+              volumes:
+                - /opt/community-board-be/application.yml:/app/config/application.yml:ro
+              mem_limit: 1024m
+              memswap_limit: 1024m
+              cpus: 2
+              environment:
+                JAVA_TOOL_OPTIONS: "-Xmx768m -Xms384m"
+          COMPOSE
+
+          export AWS_REGION="${AWS_REGION}"
+          export IMAGE_TAG="${VERSION}"
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          cd /opt/community-board-be
+          docker compose down || true
+          docker compose pull
+          docker compose up -d
+          USERDATA
+
+          user_data_b64="$(base64 -w 0 "$user_data")"
+
+          lt_version="$(aws ec2 create-launch-template-version \
+            --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+            --source-version '$Latest' \
+            --launch-template-data "{\"UserData\":\"${user_data_b64}\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text \
+            --region "$AWS_REGION")"
+
+          green_tg_arn="$(aws elbv2 create-target-group \
+            --name "$green_tg" \
+            --protocol HTTP \
+            --port "$CONTAINER_PORT" \
+            --vpc-id "$vpc_id" \
+            --target-type instance \
+            --health-check-protocol "$health_check_protocol" \
+            --health-check-path "$health_check_path" \
+            --matcher "HttpCode=$matcher" \
+            --query 'TargetGroups[0].TargetGroupArn' \
+            --output text \
+            --region "$AWS_REGION")"
+
+          aws autoscaling create-auto-scaling-group \
+            --auto-scaling-group-name "$green_asg" \
+            --launch-template "LaunchTemplateId=${LAUNCH_TEMPLATE_ID},Version=${lt_version}" \
+            --min-size "$min_size" \
+            --max-size "$max_size" \
+            --desired-capacity "$desired" \
+            --vpc-zone-identifier "$subnets" \
+            --health-check-type ELB \
+            --health-check-grace-period "$health_check_grace_period" \
+            --target-group-arns "$green_tg_arn" \
+            --tags "Key=Name,Value=${green_asg},PropagateAtLaunch=true" \
+            --region "$AWS_REGION"
+
+          deadline=$((SECONDS + HEALTH_CHECK_TIMEOUT_SECONDS))
+          healthy_count=0
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            healthy_count="$(aws elbv2 describe-target-health \
+              --target-group-arn "$green_tg_arn" \
+              --region "$AWS_REGION" \
+              | jq '[.TargetHealthDescriptions[] | select(.TargetHealth.State == "healthy")] | length')"
+
+            if [ "$healthy_count" -ge "$desired" ] && [ "$desired" -gt 0 ]; then
+              echo "Green target group is healthy."
+              break
+            fi
+
+            echo "Waiting for green targets: ${healthy_count}/${desired} healthy."
+            sleep "$HEALTH_CHECK_INTERVAL_SECONDS"
+          done
+
+          if [ "$healthy_count" -lt "$desired" ] || [ "$desired" -eq 0 ]; then
+            echo "Green target group did not become healthy before timeout." >&2
+            exit 1
+          fi
+
+          for rule_arn in $be_rule_arns; do
+            aws elbv2 modify-rule \
+              --rule-arn "$rule_arn" \
+              --actions "Type=forward,TargetGroupArn=$green_tg_arn" \
+              --region "$AWS_REGION"
+          done
+
+          lb_arn="$(aws elbv2 describe-target-groups \
+            --target-group-arns "$green_tg_arn" \
+            --query 'TargetGroups[0].LoadBalancerArns[0]' \
+            --output text \
+            --region "$AWS_REGION")"
+          lb_dimension="$(printf '%s' "$lb_arn" | sed -E 's#.*(app/[^/]+/[^/]+)$#\1#')"
+          tg_dimension="$(printf '%s' "$green_tg_arn" | sed -E 's#.*(targetgroup/[^/]+/[^/]+)$#\1#')"
+
+          bake_elapsed=0
+          while [ "$bake_elapsed" -lt "$BAKE_SECONDS" ]; do
+            sleep "$BAKE_CHECK_INTERVAL_SECONDS"
+            bake_elapsed=$((bake_elapsed + BAKE_CHECK_INTERVAL_SECONDS))
+
+            check_end="$(date -u +%Y-%m-%dT%H:%M:%S)"
+            check_start="$(date -u -d "-${BAKE_CHECK_INTERVAL_SECONDS} seconds" +%Y-%m-%dT%H:%M:%S)"
+
+            avg_response_time="$(aws cloudwatch get-metric-statistics \
+              --namespace AWS/ApplicationELB \
+              --metric-name TargetResponseTime \
+              --dimensions "Name=LoadBalancer,Value=${lb_dimension}" "Name=TargetGroup,Value=${tg_dimension}" \
+              --start-time "$check_start" \
+              --end-time "$check_end" \
+              --period "$BAKE_CHECK_INTERVAL_SECONDS" \
+              --statistics Average \
+              --query 'Datapoints[0].Average' \
+              --output text \
+              --region "$AWS_REGION")"
+
+            echo "Bake check (${bake_elapsed}s/${BAKE_SECONDS}s): avg response time = ${avg_response_time}s"
+
+            if [ "$avg_response_time" != "None" ]; then
+              exceeded="$(awk -v a="$avg_response_time" -v t="$RESPONSE_TIME_THRESHOLD_SECONDS" 'BEGIN { print (a > t) ? "1" : "0" }')"
+              if [ "$exceeded" = "1" ]; then
+                echo "Average response time ${avg_response_time}s exceeded threshold ${RESPONSE_TIME_THRESHOLD_SECONDS}s. Rolling back." >&2
+                exit 1
+              fi
+            fi
+          done
+
+          trap - ERR
+
+          aws autoscaling update-auto-scaling-group \
+            --auto-scaling-group-name "$blue_asg_name" \
+            --min-size 0 \
+            --desired-capacity 0 \
+            --region "$AWS_REGION"
+
+          aws autoscaling delete-auto-scaling-group \
+            --auto-scaling-group-name "$blue_asg_name" \
+            --force-delete \
+            --region "$AWS_REGION"
+
+          aws elbv2 delete-target-group \
+            --target-group-arn "$blue_tg_arn" \
+            --region "$AWS_REGION"
+
+          echo "Deployment completed with version ${VERSION}."
+
+      - name: Create Git semver tag
+        env:
+          VERSION: ${{ needs.release-image.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Git tag $VERSION already exists; skipping tag creation."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$VERSION"
+          git push origin "$VERSION"

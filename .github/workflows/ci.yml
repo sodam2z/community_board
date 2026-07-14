@@ -1,0 +1,42 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [dev]
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 코드 검증
+  verify:
+    name: Verify backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # 저장소 코드 가져오기
+      - name: Checkout
+        uses: actions/checkout@v4
+      # jdk 설치 및 의존성 캐싱
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      # 실행 권한 부여
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      # 실제 빌드
+      - name: Build application
+        run: ./gradlew build
+        # TODO: DB 연결이 필요한 통합 테스트를 추가하게 되면,
+        # H2, Testcontainers, 또는 GitHub Actions services: mysql로
+        # 테스트 전용 DB를 같이 구성할 것.

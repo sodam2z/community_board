@@ -1,0 +1,14 @@
+services:
+  community-board-be:
+    image: 719905537984.dkr.ecr.ap-northeast-2.amazonaws.com/community-board-be:${IMAGE_TAG}
+    container_name: community-board-be
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/community-board-be/application.yml:/app/config/application.yml:ro
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: 2
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx768m -Xms384m"

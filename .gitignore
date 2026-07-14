@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-cache/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
@@ -39,3 +40,5 @@ out/
 ### Application config ###
 src/main/resources/application.yml
 uploads/
+*.tar
+
