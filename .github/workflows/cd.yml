@@ -417,6 +417,17 @@ jobs:
             --tags "Key=Name,Value=${green_asg},PropagateAtLaunch=true" \
             --region "$AWS_REGION"
 
+          # 인스턴스가 부팅을 시작할 시간 대기
+          sleep 15
+
+          # 리스너를 먼저 green으로 전환
+          for rule_arn in $be_rule_arns; do
+            aws elbv2 modify-rule \
+              --rule-arn "$rule_arn" \
+              --actions "Type=forward,TargetGroupArn=$green_tg_arn" \
+              --region "$AWS_REGION"
+          done
+
           deadline=$((SECONDS + HEALTH_CHECK_TIMEOUT_SECONDS))
           healthy_count=0
           while [ "$SECONDS" -lt "$deadline" ]; do
@@ -438,13 +449,6 @@ jobs:
             echo "Green target group did not become healthy before timeout." >&2
             exit 1
           fi
-
-          for rule_arn in $be_rule_arns; do
-            aws elbv2 modify-rule \
-              --rule-arn "$rule_arn" \
-              --actions "Type=forward,TargetGroupArn=$green_tg_arn" \
-              --region "$AWS_REGION"
-          done
 
           lb_arn="$(aws elbv2 describe-target-groups \
             --target-group-arns "$green_tg_arn" \
