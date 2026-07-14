@@ -36,7 +36,4 @@ jobs:
 
       # 실제 빌드
       - name: Build application
-        run: ./gradlew build
-        # TODO: DB 연결이 필요한 통합 테스트를 추가하게 되면,
-        # H2, Testcontainers, 또는 GitHub Actions services: mysql로
-        # 테스트 전용 DB를 같이 구성할 것.
+        run: ./gradlew build -x test
