@@ -250,6 +250,8 @@ jobs:
             fi
           }
 
+          # exit 1이 없어서 트랩 실행 후에도 스크립트가 계속 진행되어
+          #  이미 삭제된 target group을 타임아웃까지 반복 조회하는 문제 해결
           rollback() {
             set +e
             for rule_arn in $be_rule_arns; do
@@ -259,6 +261,7 @@ jobs:
                 --region "$AWS_REGION" >/dev/null
             done
             cleanup_green
+            exit 1
           }
           trap rollback ERR
           
