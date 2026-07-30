@@ -1,0 +1,82 @@
+namespace: default
+
+deployment:
+  name: community-board-be
+
+labels:
+  app: community-board
+  tier: backend
+  env: dev
+
+replicaCount: 2
+
+image:
+  repository: 719905537984.dkr.ecr.ap-northeast-2.amazonaws.com/community-board-be
+  tag: v1.0.3
+  pullPolicy: IfNotPresent
+
+secretRefName: community-board-be-secret
+
+service:
+  name: community-board-be-svc
+  type: ClusterIP
+  port: 8080
+  targetPort: http
+
+container:
+  name: be
+  portName: http
+  port: 8080
+
+configMap:
+  name: community-board-be-config
+  mountPath: /app/config
+
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 0
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "768Mi"
+
+probes:
+  startup:
+    path: /actuator/health/liveness
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+  liveness:
+    path: /actuator/health/liveness
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+application:
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+  jpa:
+    ddlAuto: update
+    formatSql: true
+    useSqlComments: true
+  jwt:
+    issuer: community-board
+  logging:
+    hibernateSqlLevel: debug
+  file:
+    uploadDir: uploads
+    maxSize: "10485760"
+  aws:
+    s3Bucket: community-board-images-2026-719905537984-ap-northeast-2-an
+    region: ap-northeast-2
+  cloudfront:
+    domain: https://d1uacwgl0ytdya.cloudfront.net

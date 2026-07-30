@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.labels.app }}
+    tier: {{ .Values.labels.tier }}
+    env: {{ .Values.labels.env }}
+data:
+  application.yml: |
+    spring:
+      messages:
+        basename: message
+      datasource:
+        driver-class-name: {{ .Values.application.datasource.driverClassName }}
+      jpa:
+        hibernate:
+          ddl-auto: {{ .Values.application.jpa.ddlAuto }}
+        properties:
+          hibernate:
+            format_sql: {{ .Values.application.jpa.formatSql }}
+            user_sql_comments: {{ .Values.application.jpa.useSqlComments }}
+    server:
+      forward-headers-strategy: native
+    jwt:
+      issuer: {{ .Values.application.jwt.issuer }}
+    logging:
+      level:
+        org.hibernate.SQL: {{ .Values.application.logging.hibernateSqlLevel }}
+    file:
+      upload-dir: {{ .Values.application.file.uploadDir }}
+      max-size: {{ .Values.application.file.maxSize }}
+    cloud:
+      aws:
+        s3:
+          bucket: {{ .Values.application.aws.s3Bucket }}
+        region:
+          static: {{ .Values.application.aws.region }}
+        stack:
+          auto: false
+    cloudfront:
+      domain: {{ .Values.application.cloudfront.domain }}
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health
+      endpoint:
+        health:
+          show-details: never
+          group:
+            readiness:
+              include: readinessState,db
