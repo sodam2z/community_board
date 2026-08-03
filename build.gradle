@@ -52,6 +52,9 @@ dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.31.78')
 	implementation 'software.amazon.awssdk:s3'
 	implementation 'software.amazon.awssdk:auth'
+
+	//AOT Cache를 위한 설정
+	runtimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
