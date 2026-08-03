@@ -3,7 +3,6 @@ package community_board.config;
 import community_board.filter.TokenAuthenticationFilter;
 import community_board.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -45,7 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/users", "/auth", "/token", "/images/profile").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/*/profile-image", "/users/*/profile-image/file").permitAll()
-                        .requestMatchers(EndpointRequest.to("health")).permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/auth").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
