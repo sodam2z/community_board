@@ -23,7 +23,8 @@ WORKDIR /app/extracted
 RUN java -XX:AOTCacheOutput=app.aot \
          -Dspring.profiles.active=training \
          -Dspring.context.exit=onRefresh \
-         -jar app.jar
+         -jar app.jar; \
+    test -f app.aot
 
 
 # stage 2 : 실행 단계
