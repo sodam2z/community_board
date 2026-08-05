@@ -7,7 +7,6 @@ import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.global.response.ApiResponse;
 import community_board.service.TokenService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +30,6 @@ public class TokenController {
     public ResponseEntity<ApiResponse<CreateAccessTokenResponse>> createAccessToken(
             @Valid @RequestBody(required = false) CreateAccessTokenRequest request,
             @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
-            //재발급 쿠키도 요청이 HTTPS였는지 보고 Secure 속성을 정한다.
-            HttpServletRequest httpRequest,
             HttpServletResponse httpResponse
     ) {
         String refreshToken = request != null && StringUtils.hasText(request.getRefreshToken())
@@ -44,7 +41,7 @@ public class TokenController {
         }
 
         String newAccessToken = tokenService.createNewAccessToken(refreshToken);
-        addAccessTokenCookie(httpRequest, httpResponse, newAccessToken);
+        addAccessTokenCookie(httpResponse, newAccessToken);
 
         CreateAccessTokenResponse response = new CreateAccessTokenResponse(newAccessToken);
 
@@ -52,10 +49,9 @@ public class TokenController {
     }
 
     private void addAccessTokenCookie(
-            HttpServletRequest request,
             HttpServletResponse response,
             String accessToken
     ) {
-        tokenCookieFactory.addTokenCookie(request, response, "accessToken", accessToken, ACCESS_TOKEN_EXPIRATION);
+        tokenCookieFactory.addTokenCookie(response, "accessToken", accessToken, ACCESS_TOKEN_EXPIRATION);
     }
 }

@@ -8,6 +8,8 @@ metadata:
     tier: {{ .Values.labels.tier }}
     env: {{ .Values.labels.env }}
 data:
+  #JWT 쿠키 Secure 여부를 앱 코드에서 판단할 때 사용한다.
+  APP_ENV: {{ .Values.app.environment | quote }}
   application.yml: |
     spring:
       messages:

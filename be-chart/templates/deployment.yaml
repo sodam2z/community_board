@@ -36,6 +36,13 @@ spec:
           ports:
             - name: {{ .Values.container.portName }}
               containerPort: {{ .Values.container.port }}
+          env:
+            #ConfigMap에 있는 앱 실행 환경값만 환경변수로 주입한다.
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.configMap.name }}
+                  key: APP_ENV
           envFrom:
             - secretRef:
                 name: {{ .Values.secretRefName }}

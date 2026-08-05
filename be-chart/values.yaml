@@ -8,6 +8,10 @@ labels:
   tier: backend
   env: dev
 
+#앱에서 운영/로컬을 구분할 때 쓰는 값이다.
+app:
+  environment: production
+
 replicaCount: 2
 
 image:
