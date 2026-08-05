@@ -55,9 +55,16 @@ public class PostService {
                 () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
         );
 
-        // 게시글 조회 이벤트 발행
-        eventPublisher.publishEvent(new PostViewedEvent(postId));
         return GetPostResponse.from(post);
+    }
+
+    @Transactional(readOnly = true)
+    public void increaseViewCount(Integer postId) {
+        postRepository.findById(postId).orElseThrow(
+                () -> new RestApiException(PostErrorCode.POST_NOT_FOUND)
+        );
+        //조회수 증가는 GET 조회랑 분리해서 CSRF 검증 대상인 POST에서만 처리한다.
+        eventPublisher.publishEvent(new PostViewedEvent(postId));
     }
 
     //게시글 수정
