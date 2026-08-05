@@ -31,6 +31,12 @@ public class PostController {
         return ResponseEntity.ok().body(ApiResponse.of("POST_VIEW_SUCCESS", response));
     }
 
+    @PostMapping("/posts/{postId}/views")
+    public ResponseEntity<Void> increasePostView(@PathVariable Integer postId) {
+        postService.increaseViewCount(postId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/posts/{postId}")
     public ResponseEntity<?> updatePost(
             @PathVariable Integer postId,

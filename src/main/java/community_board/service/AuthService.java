@@ -1,5 +1,6 @@
 package community_board.service;
 
+import community_board.config.TokenCookieFactory;
 import community_board.domain.RefreshToken;
 import community_board.domain.User;
 import community_board.dto.user.UserLoginRequest;
@@ -9,7 +10,6 @@ import community_board.global.exception.UserErrorCode;
 import community_board.jwt.JwtProvider;
 import community_board.repository.RefreshTokenRepository;
 import community_board.repository.UserRepository;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +24,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final TokenCookieFactory tokenCookieFactory;
 
     private static final int ACCESS_TOKEN_EXPIRATION = 15 * 60;
     private static final int REFRESH_TOKEN_EXPIRATION = 14 * 24 * 60 * 60;
@@ -57,7 +58,10 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String refreshToken, HttpServletResponse response) {
+    public void logout(
+            String refreshToken,
+            HttpServletResponse response
+    ) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             // 로그아웃한 Refresh Token이 다시 사용되지 않도록 DB에서 삭제한다.
             refreshTokenRepository
@@ -78,18 +82,21 @@ public class AuthService {
         return new TokenResponse(accessToken, refreshToken);
     }
 
-    private void addTokenCookies(HttpServletResponse response, TokenResponse tokenResponse) {
+    private void addTokenCookies(
+            HttpServletResponse response,
+            TokenResponse tokenResponse
+    ) {
         addTokenCookie(response, "accessToken", tokenResponse.accessToken(), ACCESS_TOKEN_EXPIRATION);
         addTokenCookie(response, "refreshToken", tokenResponse.refreshToken(), REFRESH_TOKEN_EXPIRATION);
     }
 
-    private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        // JavaScript에서 쿠키를 읽지 못하게 하여 토큰 탈취 위험을 줄인다.
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAge);
-        response.addCookie(cookie);
+    private void addTokenCookie(
+            HttpServletResponse response,
+            String name,
+            String value,
+            int maxAge
+    ) {
+        tokenCookieFactory.addTokenCookie(response, name, value, maxAge);
     }
 
     private boolean checkPassword(User user, String rawPassword) {

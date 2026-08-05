@@ -36,7 +36,8 @@ public class SecurityConfig {
         return http
                 //프론트 서버에서 쿠키를 포함한 API 요청 허용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .csrf(csrf -> csrf.disable())
+                //세션을 안 쓰기 때문에 SPA용 쿠키 기반 CSRF 토큰을 사용한다.
+                .csrf(csrf -> csrf.spa())
                 .formLogin(formLogin -> formLogin.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .sessionManagement(session ->
@@ -69,9 +70,9 @@ public class SecurityConfig {
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
-        //프론트 요청 헤더 허용
+        //프론트가 CSRF 토큰을 X-XSRF-TOKEN 헤더에 담아서 보낼 수 있게 허용한다.
         configuration.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type"
+                "Authorization", "Content-Type", "X-XSRF-TOKEN"
         ));
 
         //액세스 토큰과 리프레시 토큰 쿠키 전송 허용

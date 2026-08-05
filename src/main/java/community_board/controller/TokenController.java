@@ -1,12 +1,12 @@
 package community_board.controller;
 
+import community_board.config.TokenCookieFactory;
 import community_board.dto.CreateAccessTokenRequest;
 import community_board.dto.CreateAccessTokenResponse;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.global.response.ApiResponse;
 import community_board.service.TokenService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +24,7 @@ public class TokenController {
     private static final int ACCESS_TOKEN_EXPIRATION = 15 * 60;
 
     private final TokenService tokenService;
+    private final TokenCookieFactory tokenCookieFactory;
 
     @PostMapping("/token")
     public ResponseEntity<ApiResponse<CreateAccessTokenResponse>> createAccessToken(
@@ -47,11 +48,10 @@ public class TokenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("TOKEN_CREATED", response));
     }
 
-    private void addAccessTokenCookie(HttpServletResponse response, String accessToken) {
-        Cookie cookie = new Cookie("accessToken", accessToken);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(ACCESS_TOKEN_EXPIRATION);
-        response.addCookie(cookie);
+    private void addAccessTokenCookie(
+            HttpServletResponse response,
+            String accessToken
+    ) {
+        tokenCookieFactory.addTokenCookie(response, "accessToken", accessToken, ACCESS_TOKEN_EXPIRATION);
     }
 }
