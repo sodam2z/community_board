@@ -1,6 +1,8 @@
 package community_board.controller;
 
 import community_board.dto.post.*;
+import community_board.global.exception.PostErrorCode;
+import community_board.global.exception.RestApiException;
 import community_board.global.response.ApiResponse;
 import community_board.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController//JSON 형식으로 반환
 public class PostController {
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PostService postService;
 
     @PostMapping("/posts")
@@ -58,8 +62,23 @@ public class PostController {
     public ResponseEntity<?> getPosts(
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit) {
-        Pageable pageable = PageRequest.of(offset, limit);
+        Pageable pageable = createPageable(offset, limit);
         return ResponseEntity.ok().body(ApiResponse.of("POST_LIST_SUCCESS", postService.findPostList(pageable)));
+    }
+
+    @GetMapping("/posts/trending")
+    public ResponseEntity<?> getTrendingPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = createPageable(page, size);
+        return ResponseEntity.ok().body(ApiResponse.of("TRENDING_POST_LIST_SUCCESS", postService.findTrendingPostList(pageable)));
+    }
+
+    private Pageable createPageable(int page, int size) {
+        if (page < 0 || size <= 0 || size > MAX_PAGE_SIZE) {
+            throw new RestApiException(PostErrorCode.INVALID_PAGE_REQUEST);
+        }
+        return PageRequest.of(page, size);
     }
 
 }

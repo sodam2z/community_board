@@ -7,5 +7,7 @@ import org.springframework.data.domain.Pageable;
 public interface PostRepositoryCustom {
 
     Slice<PostListResponse> findPostList(Pageable pagable);
+
+    Slice<PostListResponse> findTrendingPostList(Pageable pageable);
     
 }

@@ -12,6 +12,7 @@ import java.util.List;
 import static community_board.domain.QPost.post;
 import static community_board.domain.QPostComment.postComment;
 import static community_board.domain.QPostLike.postLike;
+import static community_board.domain.QPostStats.postStats;
 
 @RequiredArgsConstructor
 public class PostRepositoryCustomImpl implements PostRepositoryCustom {
@@ -39,6 +40,37 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
         }
 
         return new SliceImpl<>(content, pageable, hasNext);
+    }
+
+    @Override
+    public Slice<PostListResponse> findTrendingPostList(Pageable pageable) {
+        List<PostListResponse> content = queryFactory
+                .select(post, postStats.commentCount, postStats.likeCount)
+                .from(post)
+                .join(post.user).fetchJoin()
+                .leftJoin(postStats).on(postStats.post.eq(post))
+                .orderBy(postStats.trendingScore.desc(), post.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize() + 1) // 다음 페이지 존재 여부 확인
+                .fetch()
+                .stream()
+                .map(tuple -> PostListResponse.from(
+                        tuple.get(post),
+                        toLong(tuple.get(postStats.commentCount)),
+                        toLong(tuple.get(postStats.likeCount))
+                ))
+                .toList();
+
+        boolean hasNext = content.size() > pageable.getPageSize();
+        if (hasNext) {
+            content = content.subList(0, pageable.getPageSize());
+        }
+
+        return new SliceImpl<>(content, pageable, hasNext);
+    }
+
+    private Long toLong(Integer count) {
+        return count == null ? 0L : count.longValue();
     }
 
     private Long countComments(community_board.domain.Post postEntity) {

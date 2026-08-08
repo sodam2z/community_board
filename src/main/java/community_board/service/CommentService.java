@@ -11,6 +11,7 @@ import community_board.dto.comment.UpdateCommentResponse;
 import community_board.global.exception.*;
 import community_board.repository.CommentRepository;
 import community_board.repository.PostRepository;
+import community_board.repository.PostStatsRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.List;
 public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final PostStatsRepository postStatsRepository;
     private final UserRepository userRepository;
 
     //댓글 작성
@@ -40,6 +42,7 @@ public class CommentService {
 
         //댓글 생성 및 저장
         PostComment savedComment = commentRepository.save(request.toEntity(user,post));
+        validatePostStatsUpdated(postStatsRepository.increaseCommentCount(postId));
         return CreateCommentResponse.from(savedComment);
 
     }
@@ -88,5 +91,12 @@ public class CommentService {
         }
 
         comment.delete();
+        validatePostStatsUpdated(postStatsRepository.decreaseCommentCount(comment.getPost().getPostId()));
+    }
+
+    private void validatePostStatsUpdated(int updatedRows) {
+        if (updatedRows == 0) {
+            throw new RestApiException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 }
