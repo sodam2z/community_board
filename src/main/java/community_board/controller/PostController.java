@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController//JSON 형식으로 반환
 public class PostController {
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PostService postService;
 
     @PostMapping("/posts")
@@ -73,7 +75,7 @@ public class PostController {
     }
 
     private Pageable createPageable(int page, int size) {
-        if (page < 0 || size <= 0) {
+        if (page < 0 || size <= 0 || size > MAX_PAGE_SIZE) {
             throw new RestApiException(PostErrorCode.INVALID_PAGE_REQUEST);
         }
         return PageRequest.of(page, size);
