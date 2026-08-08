@@ -5,12 +5,14 @@ import community_board.domain.PostLike;
 import community_board.domain.User;
 import community_board.dto.like.GetPostLikeResponse;
 import community_board.dto.like.PostLikeResponse;
+import community_board.global.exception.CommonErrorCode;
 import community_board.global.exception.LikeErrorCode;
 import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.repository.PostLikeRepository;
 import community_board.repository.PostRepository;
+import community_board.repository.PostStatsRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LikeService {
     private final PostLikeRepository postLikeRepository;
     private final PostRepository postRepository;
+    private final PostStatsRepository postStatsRepository;
     private final UserRepository userRepository;
 
     //좋아요 조회
@@ -65,6 +68,7 @@ public class LikeService {
                 .userId(user)
                 .postId(post)
                 .build());
+        validatePostStatsUpdated(postStatsRepository.increaseLikeCount(postId));
 
         //좋아요 수 반환
         Integer likeCount = postLikeRepository.countByPostId(post);
@@ -92,9 +96,16 @@ public class LikeService {
 
         //좋아요 삭제
         postLikeRepository.deleteByUserIdAndPostId(user,post);
+        validatePostStatsUpdated(postStatsRepository.decreaseLikeCount(postId));
 
         //좋아요 수 반환
         Integer likeCount = postLikeRepository.countByPostId(post);
         return PostLikeResponse.of(likeCount);
+    }
+
+    private void validatePostStatsUpdated(int updatedRows) {
+        if (updatedRows == 0) {
+            throw new RestApiException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 }
