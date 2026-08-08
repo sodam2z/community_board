@@ -21,6 +21,17 @@ public class PostStatsRepository {
     ) {
     }
 
+    // 게시글 생성 시 통계 기본값 저장
+    public int insertInitialStats(Integer postId) {
+        return jdbcTemplate.update(
+                """
+                INSERT INTO post_stats (post_id, like_count, comment_count, trending_score)
+                VALUES (?, 0, 0, 0)
+                """,
+                postId
+        );
+    }
+
     // 좋아요 수 증가
     public int increaseLikeCount(Integer postId) {
         return jdbcTemplate.update(

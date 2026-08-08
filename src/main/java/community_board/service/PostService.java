@@ -9,6 +9,7 @@ import community_board.global.exception.PostErrorCode;
 import community_board.global.exception.RestApiException;
 import community_board.global.exception.UserErrorCode;
 import community_board.repository.PostRepository;
+import community_board.repository.PostStatsRepository;
 import community_board.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +25,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final PostImageService postImageService;
+    private final PostStatsRepository postStatsRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     //게시글 추가 메서드
@@ -33,6 +35,7 @@ public class PostService {
                 () -> new RestApiException(UserErrorCode.USER_NOT_FOUND)
         );
         Post savedPost = postRepository.save(request.toEntity(user));
+        validatePostStatsCreated(postStatsRepository.insertInitialStats(savedPost.getPostId()));
 
         // 이미지 경로가 있으면 DB 저장
         if (request.getJpgPaths() != null) {
@@ -108,6 +111,18 @@ public class PostService {
     @Transactional(readOnly = true)
     public Slice<PostListResponse> findPostList(Pageable pageable) {
         return postRepository.findPostList(pageable);
+    }
+
+    //트렌딩 게시글 목록 조회
+    @Transactional(readOnly = true)
+    public Slice<PostListResponse> findTrendingPostList(Pageable pageable) {
+        return postRepository.findTrendingPostList(pageable);
+    }
+
+    private void validatePostStatsCreated(int updatedRows) {
+        if (updatedRows == 0) {
+            throw new RestApiException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 
 }
