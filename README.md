@@ -11,6 +11,10 @@
 | 배포 URL | https://community-board.p-e.kr |
 | Front-end | [4-cindy-community-FE](https://github.com/100-hours-a-week/4-cindy-community-FE) |
 
+## 데모
+
+- [Dessert Log 서비스 시연 영상](https://drive.google.com/file/d/1bXpht78EpV3Y-myXGsPegKkCYn98Zugg/view?usp=sharing)
+
 ## 아키텍처
 
 ![서비스 아키텍처](docs/images/architecture.jpeg)
